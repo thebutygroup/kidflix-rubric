@@ -1,0 +1,12 @@
+__pycache__/
+.env
+*.pyc
+# never publish poster art or other rights-encumbered icons
+icons/
+.venv/
+venv/
+.DS_Store
+.venv/
+venv/
+.DS_Store
+*.zip

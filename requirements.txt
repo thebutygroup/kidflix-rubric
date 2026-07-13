@@ -1,0 +1,6 @@
+pandas>=2.0
+matplotlib>=3.7
+adjustText>=1.0
+textalloc>=1.1
+numpy>=1.24
+anthropic>=0.40
