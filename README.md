@@ -5,6 +5,10 @@ audience love, box office, and adult cinema.**
 
 Live at: **https://analysis.thebutygroup.com/kids-movies/**
 
+**Project status:** 90 films hand-scored and published · scoring pipeline live on
+the Claude API (batch, temperature 0, median-of-3) · validation of API scores
+against the hand calibration in progress.
+
 ![audience scatter](output/scatter_audience.png)
 
 ---
@@ -52,6 +56,25 @@ livelihood (*The Princess and the Frog* scores 34).
 
 **Tiers:** S ≥ 90 · A 75–89 · B 60–74 · C 45–59 · D 30–44 · F < 30.
 Totals and tiers are always computed by `analysis.py`, never hand-entered.
+
+## Plug in your own rubric
+
+Everything derives from **`rubric.json`** — dimensions, weights, per-dimension
+scoring bands with anchor examples, and tier cutoffs. To fork this with your own
+values (courage, faith, humor, whatever your family cares about):
+
+1. Edit `rubric.json`: rename/add/remove dimensions, set `max` weights that sum
+   to 100, write bands with a few anchor films each, and set your tier names.
+2. Give your CSV one column per dimension key (plus the standard metadata
+   columns) and a matching key per dimension in each `commentary` JSON object.
+3. Run the pipeline unchanged: `analysis.py`, `interactive.py`, `build_site.py`,
+   and the Claude API scoring prompt are all **generated from `rubric.json`** —
+   the API prompt embeds your bands and anchors automatically, and the prompt
+   hash recorded with each result changes when your rubric does.
+
+The weights forcing themselves to 100 is a feature: it makes you say out loud
+what you care about most. The bands with anchors are what make an LLM (or a
+co-parent) apply your values consistently instead of vibing.
 
 ## Datasets
 
@@ -137,6 +160,29 @@ Repeatability measures (and their honest limits):
 API-scored rows land with empty `mpaa`/RT/revenue columns for manual fill, then
 `analysis.py` recomputes totals and tiers as usual. Human-assigned and API-assigned
 scores should not be silently mixed in published claims — note provenance.
+
+### Validating the API against the hand calibration
+
+Before trusting the API on new films, rescore the existing catalogue and diff:
+
+```bash
+python scripts/make_validation_titles.py     # 90 titles from both datasets
+python scripts/score_movies_api.py --file validation_titles.txt --runs 3 --out validation_scores.csv
+python scripts/validate_diff.py              # per-dimension deltas + biggest disagreements
+```
+
+`validate_diff.py` reports mean absolute delta per dimension, direction of bias,
+and the largest per-film disagreements (written to `validation_diff.csv`). Large
+systematic deltas mean the rubric prompt needs another anchor example, not that
+either score set is "wrong" — the hand scores are the calibration standard.
+
+### Operational workflow (two machines)
+
+Code moves between machines only via git; scoring runs only where the API key
+lives. On the scoring box, `run_batch.ps1` wraps the whole loop:
+pull → batch-score `new_titles.txt` → commit scores → push. The development
+machine pulls, fills `mpaa`/RT/revenue, runs `analysis.py` and `build_site.py`,
+and pushes — which, once GitHub Pages is enabled on `/docs`, is also the deploy.
 
 ## Reproducing this analysis from scratch
 

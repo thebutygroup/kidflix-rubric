@@ -1,0 +1,187 @@
+{
+  "name": "Kidflix Rubric",
+  "description": "Opinionated, values-based rubric measuring what a film's structure teaches a child viewer. Weights must sum to 100.",
+  "tiers": [
+    [
+      "S",
+      90
+    ],
+    [
+      "A",
+      75
+    ],
+    [
+      "B",
+      60
+    ],
+    [
+      "C",
+      45
+    ],
+    [
+      "D",
+      30
+    ],
+    [
+      "F",
+      0
+    ]
+  ],
+  "dimensions": {
+    "wealth": {
+      "max": 40,
+      "label": "Inherited Specialness & Wealth",
+      "question": "Does the protagonist matter because of what they DO, or what they were BORN AS / INTO — and is wealth/status the story's endorsed reward? Self-made ascension scores as low as inherited ascension: penalise the endorsed outcome, not the pursuit of a livelihood.",
+      "bands": [
+        [
+          40,
+          "genuinely ordinary protagonist; the story could happen to any kid (anchors: Coco 36, Inside Out 40, Spirited Away 40)"
+        ],
+        [
+          35,
+          "modest born-into status doing narrative work (Moana 35, chief's daughter)"
+        ],
+        [
+          30,
+          "wealth/status exists but is critiqued as hollow (Encanto 28; critique with residual glorification lands 20-30)"
+        ],
+        [
+          20,
+          "born-into greatness, unexamined; no depicted grind (Cars 20)"
+        ],
+        [
+          16,
+          "royal-but-burdened; status as isolation, still the source of specialness (Frozen 16)"
+        ],
+        [
+          0,
+          "status ascension is the endorsed reward, born or climbed (Cinderella 0, Aladdin 5, The Lion King 4, Goodfellas 6, Scarface 4, Wolf of Wall Street 2)"
+        ]
+      ]
+    },
+    "agency": {
+      "max": 17,
+      "label": "Protagonist Agency",
+      "question": "Do they solve their own story, or is rescue assembled around them?",
+      "bands": [
+        [
+          17,
+          "solves their own story through their own choices (Moana, Anna in Frozen)"
+        ],
+        [
+          13,
+          "strong but split, diluted, or destiny-assisted"
+        ],
+        [
+          8,
+          "luck-heavy or shared solving"
+        ],
+        [
+          0,
+          "passive; rescued at their own climax (Sleeping Beauty 0, Snow White 2, The Little Mermaid 4 — Eric kills the villain)"
+        ]
+      ]
+    },
+    "core": {
+      "max": 17,
+      "label": "Emotional Core",
+      "question": "What is the story about UNDER the plot?",
+      "bands": [
+        [
+          17,
+          "deep honest core: grief, identity, belonging, fear-vs-love (Inside Out, Coco, Up, Frozen)"
+        ],
+        [
+          13,
+          "real substance, simpler arc (Cars 15)"
+        ],
+        [
+          8,
+          "standard adventure/friendship beats"
+        ],
+        [
+          0,
+          "core is status, validation, or being chosen (Sleeping Beauty 0)"
+        ]
+      ]
+    },
+    "music": {
+      "max": 10,
+      "label": "Music",
+      "question": "Do songs carry the story?",
+      "bands": [
+        [
+          10,
+          "original songs that carry story (Moana, Frozen, Coco)"
+        ],
+        [
+          8,
+          "strong songs with gaps, or performance-central diegetic music"
+        ],
+        [
+          5,
+          "score only, or licensed soundtrack (Cars 5, Inside Out 5)"
+        ],
+        [
+          0,
+          "actively grating or hollow"
+        ]
+      ]
+    },
+    "inclusion": {
+      "max": 10,
+      "label": "Inclusiveness & Anti-Prejudice",
+      "question": "Distinguish PASSIVE ABSENCE from ACTIVE HARM.",
+      "bands": [
+        [
+          10,
+          "inclusion/anti-prejudice IS the lesson; prejudice-as-plot (Zootopia, The Land Before Time, Shrek, Mulan)"
+        ],
+        [
+          8,
+          "strong inclusion content, secondary to the main arc (Lilo & Stitch 8)"
+        ],
+        [
+          7,
+          "meaningful representation; not the lesson (Moana 7, Soul 7)"
+        ],
+        [
+          5,
+          "neutral: nothing taught, no group harmed (non-human casts, Toy Story 5)"
+        ],
+        [
+          4,
+          "homogeneous world presented as default; passive exclusion; missed opportunity (Cinderella 4, Sleeping Beauty 4)"
+        ],
+        [
+          2,
+          "harmful stereotyping or othering PRESENT in the text (Aladdin 2, The Lion King 2, Scarface 2, The Godfather 2, Wizard of Oz 2)"
+        ],
+        [
+          0,
+          "active degradation or othering AS SPECTACLE (Wolf of Wall Street 0, Peter Pan 0)"
+        ]
+      ],
+      "commentary_format": "Band <score>/10 (<band name>): <reason>"
+    },
+    "romance": {
+      "max": 6,
+      "label": "Romance Framing",
+      "question": "Is marriage/being-chosen the prize?",
+      "bands": [
+        [
+          6,
+          "absent, or actively subverted (Frozen 6, Brave 6)"
+        ],
+        [
+          3,
+          "present but balanced"
+        ],
+        [
+          0,
+          "marriage/being-chosen is the prize (Little Mermaid 0 — her voice for a man; Cinderella 0 — identified by shoe size)"
+        ]
+      ]
+    }
+  }
+}

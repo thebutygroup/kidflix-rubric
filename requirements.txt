@@ -4,3 +4,4 @@ adjustText>=1.0
 textalloc>=1.1
 numpy>=1.24
 anthropic>=0.40
+plotly>=6.0

@@ -36,14 +36,17 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
 
+# --- key loading -----------------------------------------------------------
 # Reads ANTHROPIC_API_KEY from the environment first; falls back to the .env
 # used by the HomePod bot so the key lives in exactly one place.
+# Override the location with KIDFLIX_ENV=<path> if the stack ever moves.
 ENV_FILE = Path(os.environ.get("KIDFLIX_ENV", r"c:/stack/bot/app/.env"))
 if not os.environ.get("ANTHROPIC_API_KEY") and ENV_FILE.exists():
     for _line in ENV_FILE.read_text().splitlines():
         _line = _line.strip()
         if _line.startswith("ANTHROPIC_API_KEY="):
-            os.environ["ANTHROPIC_API_KEY"] = _line.split("=", 1)[1].strip().strip('"').strip("'")
+            os.environ["ANTHROPIC_API_KEY"] = \
+                _line.split("=", 1)[1].strip().strip('"').strip("'")
             break
 
 MODEL = os.environ.get("KIDFLIX_MODEL", "claude-sonnet-4-6")  # pin a dated snapshot for production
@@ -323,7 +326,8 @@ def main() -> None:
     args = ap.parse_args()
 
     if not os.environ.get("ANTHROPIC_API_KEY"):
-        sys.exit("Set ANTHROPIC_API_KEY (same env var as the HomePod project).")
+        sys.exit(f"ANTHROPIC_API_KEY not set and not found in {ENV_FILE} "
+                 f"(override location with KIDFLIX_ENV=<path>).")
     client = anthropic.Anthropic()
 
     if args.resume:
