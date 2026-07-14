@@ -25,8 +25,8 @@ import plotly.graph_objects as go
 ROOT = Path(__file__).parent
 OUT = ROOT / "output"
 
-DIM_MAX = {"wealth": 40, "agency": 17, "core": 17,
-           "music": 10, "inclusion": 10, "romance": 6}
+RUBRIC = json.loads((ROOT / "rubric.json").read_text())
+DIM_MAX = {k: v["max"] for k, v in RUBRIC["dimensions"].items()}
 
 
 def load(path: Path, segment: str) -> pd.DataFrame:
@@ -59,8 +59,10 @@ def hover_text(row: pd.Series) -> str:
     return "<br>".join(wrapped)
 
 
-def make_trace(df: pd.DataFrame, name: str, colour: str, symbol: str) -> go.Scatter:
+def make_trace(df: pd.DataFrame, name: str, colour: str, symbol: str,
+               visible=True) -> go.Scatter:
     return go.Scatter(
+        visible=visible,
         x=df["rt_audience"], y=df["total"],
         mode="markers+text",
         name=name,
@@ -102,9 +104,10 @@ function updateLabels() {
     var vis = [];
     gd.data.forEach(function(tr, ti) {
         if (tr.visible === 'legendonly') return;
-        for (var i = 0; i < tr.x.length; i++) {
-            if (tr.x[i] >= Math.min(xr[0],xr[1]) && tr.x[i] <= Math.max(xr[0],xr[1]) &&
-                tr.y[i] >= Math.min(yr[0],yr[1]) && tr.y[i] <= Math.max(yr[0],yr[1])) {
+        var txs = Array.from(tr.x), tys = Array.from(tr.y);
+        for (var i = 0; i < txs.length; i++) {
+            if (txs[i] >= Math.min(xr[0],xr[1]) && txs[i] <= Math.max(xr[0],xr[1]) &&
+                tys[i] >= Math.min(yr[0],yr[1]) && tys[i] <= Math.max(yr[0],yr[1])) {
                 vis.push({ti: ti, i: i, prio: tr.customdata[i][1]});
             }
         }
@@ -116,9 +119,11 @@ function updateLabels() {
     });
 
     var newText = gd.data.map(function(tr, ti) {
-        return tr.x.map(function(_, i) {
-            return (chosen[ti] && chosen[ti][i]) ? tr.customdata[i][0] : '';
-        });
+        var arr = [];
+        for (var i = 0; i < tr.x.length; i++) {
+            arr.push((chosen[ti] && chosen[ti][i]) ? String(tr.customdata[i][0]) : '');
+        }
+        return arr;
     });
     Plotly.restyle(gd, {text: newText});
 }
@@ -141,7 +146,8 @@ def main() -> None:
 
     fig = go.Figure([
         make_trace(kids, f"Kids films (n={len(kids)})", "#7cb342", "circle"),
-        make_trace(adult, f"Adult films (n={len(adult)})", "#5c6bc0", "square"),
+        make_trace(adult, f"Adult films (n={len(adult)}) — click to show", "#5c6bc0",
+                   "square", visible="legendonly"),
     ])
 
     # tier bands
@@ -157,7 +163,7 @@ def main() -> None:
     fig.update_layout(
         title="Kidflix rubric — audience love vs. what the film teaches "
               "(zoom in for more labels; bubble = inflation-adjusted gross; "
-              "click legend to filter segments)",
+              "adult films hidden by default — click the legend to show them)",
         xaxis=dict(title="Rotten Tomatoes — audience (Popcornmeter %)",
                    range=[20, 103]),
         yaxis=dict(title="Rubric score (/100)", range=[0, 104]),

@@ -1,0 +1,110 @@
+Pinocchio,1940
+Dumbo,1941
+Lady and the Tramp,1955
+Alice in Wonderland,1951
+101 Dalmatians,1961
+The Sword in the Stone,1963
+The Jungle Book,1967
+The Aristocats,1970
+Robin Hood,1973
+The Many Adventures of Winnie the Pooh,1977
+The Rescuers,1977
+The Fox and the Hound,1981
+The Black Cauldron,1985
+The Great Mouse Detective,1986
+Oliver & Company,1988
+The Rescuers Down Under,1990
+The Emperor's New Groove,2000
+Atlantis: The Lost Empire,2001
+Treasure Planet,2002
+Brother Bear,2003
+Home on the Range,2004
+Meet the Robinsons,2007
+Bolt,2008
+Ralph Breaks the Internet,2018
+Raya and the Last Dragon,2021
+Strange World,2022
+Wish,2023
+Moana 2,2024
+Mufasa: The Lion King,2024
+A Bug's Life,1998
+Toy Story 2,1999
+Toy Story 3,2010
+Toy Story 4,2019
+Monsters Inc,2001
+Monsters University,2013
+Finding Dory,2016
+The Good Dinosaur,2015
+Incredibles 2,2018
+Onward,2020
+Lightyear,2022
+Elemental,2023
+Inside Out 2,2024
+Antz,1998
+The Prince of Egypt,1998
+The Road to El Dorado,2000
+Shrek 2,2004
+Madagascar: Escape 2 Africa,2008
+Megamind,2010
+Rise of the Guardians,2012
+The Croods,2013
+How to Train Your Dragon 2,2014
+How to Train Your Dragon: The Hidden World,2019
+Kung Fu Panda 2,2011
+Kung Fu Panda 3,2016
+Spirit: Stallion of the Cimarron,2002
+Bee Movie,2007
+Puss in Boots,2011
+Puss in Boots: The Last Wish,2022
+The Secret of NIMH,1982
+An American Tail: Fievel Goes West,1991
+All Dogs Go to Heaven,1989
+Anastasia,1997
+Thumbelina,1994
+Balto,1995
+FernGully: The Last Rainforest,1992
+The Pagemaster,1994
+Cats Don't Dance,1997
+Quest for Camelot,1998
+The Swan Princess,1994
+The Brave Little Toaster,1987
+The Nightmare Before Christmas,1993
+James and the Giant Peach,1996
+Chicken Run,2000
+Wallace & Gromit: The Curse of the Were-Rabbit,2005
+Coraline,2009
+ParaNorman,2012
+Fantastic Mr. Fox,2009
+Kubo and the Two Strings,2016
+The Boxtrolls,2014
+Kiki's Delivery Service,1989
+Ponyo,2008
+Howl's Moving Castle,2004
+Castle in the Sky,1986
+The Lorax,2012
+Despicable Me 2,2013
+Sing 2,2021
+The Secret Life of Pets,2016
+Minions: The Rise of Gru,2022
+The Super Mario Bros. Movie,2023
+Migration,2023
+Cloudy with a Chance of Meatballs,2009
+Spider-Man: Into the Spider-Verse,2018
+The Lego Batman Movie,2017
+The Wild Robot,2024
+Flow,2024
+Sonic the Hedgehog,2020
+Paddington 2,2017
+Honey I Shrunk the Kids,1989
+Flight of the Navigator,1986
+The Mighty Ducks,1992
+Cool Runnings,1993
+Homeward Bound: The Incredible Journey,1993
+Hook,1991
+Babe,1995
+Jumanji,1995
+Casper,1995
+The Parent Trap,1998
+Free Willy,1993
+The Santa Clause,1994
+Mrs. Doubtfire,1993

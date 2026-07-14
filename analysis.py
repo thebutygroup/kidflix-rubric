@@ -34,25 +34,19 @@ ICONS = ROOT / "icons"
 OUT = ROOT / "output"
 
 # ---------------------------------------------------------------------------
-# Rubric definition (single source of truth)
+# Rubric definition — loaded from rubric.json (THE single source of truth).
+# Edit rubric.json to change dimensions, weights, or tiers; every script and
+# the API prompt derive from it. Weights must sum to 100.
 # ---------------------------------------------------------------------------
-DIMENSIONS = {
-    "wealth": 40,     # Inherited Specialness & Wealth
-    "agency": 17,     # Protagonist Agency
-    "core": 17,       # Emotional Core
-    "music": 10,      # Music
-    "inclusion": 10,  # Inclusiveness & Anti-Prejudice
-    "romance": 6,     # Romance Framing
-}
+import json as _json
+RUBRIC = _json.loads((ROOT / "rubric.json").read_text())
+DIMENSIONS = {k: v["max"] for k, v in RUBRIC["dimensions"].items()}
+DIM_LABELS = {k: v["label"] for k, v in RUBRIC["dimensions"].items()}
+assert sum(DIMENSIONS.values()) == 100, "rubric.json weights must sum to 100"
 
-TIERS = [
-    ("S", 90, "#2e7d32"),
-    ("A", 75, "#7cb342"),
-    ("B", 60, "#fbc02d"),
-    ("C", 45, "#fb8c00"),
-    ("D", 30, "#e64a19"),
-    ("F", 0, "#b71c1c"),
-]
+_TIER_COLOURS = ["#2e7d32", "#7cb342", "#fbc02d", "#fb8c00", "#e64a19", "#b71c1c"]
+TIERS = [(name, lo, _TIER_COLOURS[i % len(_TIER_COLOURS)])
+         for i, (name, lo) in enumerate(RUBRIC["tiers"])]
 
 # Quadrant thresholds default to the dataset medians so each axis splits 50/50
 # and the crosshair sits at the centre of the data (set to numbers to fix them).
@@ -147,10 +141,19 @@ def _tier_bands(ax, x_for_letter: float) -> None:
         upper = lower
 
 
+def _plotable(df: pd.DataFrame, x_col: str) -> pd.DataFrame:
+    d = df.dropna(subset=[x_col, "total"])
+    if len(d) < len(df):
+        print(f"  note: {len(df)-len(d)} film(s) missing {x_col}; "
+              f"scored but not plotted until metadata is filled")
+    return d
+
+
 def plot_full(df: pd.DataFrame, x_col: str = "rt_critic",
               x_label: str = "Rotten Tomatoes — critics (Tomatometer %)",
               fname: str = "scatter_critic.png") -> Path:
-    fig, ax = plt.subplots(figsize=(18, 12))
+    df = _plotable(df, x_col)
+    fig, ax = plt.subplots(figsize=(19, 13))
     _tier_bands(ax, x_for_letter=1.5)
 
     # quadrant crosshairs at the data medians (or fixed thresholds if set)
@@ -191,7 +194,7 @@ def plot_full(df: pd.DataFrame, x_col: str = "rt_critic",
     ax.text(x_left, y_bot, f"SKIP ({counts['skip']}/{n})\nneither", color="#616161",
             zorder=1, **q_style)
 
-    _draw(df, ax, label_fontsize=8, icon_zoom=0.35, x_col=x_col)
+    _draw(df, ax, label_fontsize=10, icon_zoom=0.35, x_col=x_col)
 
     ax.set_xlabel(x_label, fontsize=12)
     ax.set_ylabel("Rubric score (/100)", fontsize=12)
@@ -208,10 +211,11 @@ def plot_full(df: pd.DataFrame, x_col: str = "rt_critic",
 
 def plot_zoom(df: pd.DataFrame, rt_min: int = 78, rubric_min: int = 72,
               x_col: str = "rt_audience", fname: str = "scatter_zoom.png") -> Path:
-    sub = df[(df[x_col] >= rt_min) & (df["total"] >= rubric_min)]
+    sub = _plotable(df, x_col)
+    sub = sub[(sub[x_col] >= rt_min) & (sub["total"] >= rubric_min)]
     fig, ax = plt.subplots(figsize=(15, 10))
     _tier_bands(ax, x_for_letter=rt_min + 0.4)
-    _draw(sub, ax, label_fontsize=10, icon_zoom=0.45, x_col=x_col)
+    _draw(sub, ax, label_fontsize=11, icon_zoom=0.45, x_col=x_col)
     ax.set_xlabel("Rotten Tomatoes — audience (Popcornmeter %)", fontsize=12)
     ax.set_ylabel("Rubric score (/100)", fontsize=12)
     ax.set_title(f"Zoom: the safe-bet corner (audience ≥ {rt_min}, rubric ≥ {rubric_min})",
@@ -232,7 +236,7 @@ def plot_rank(df: pd.DataFrame, x_col: str = "rt_audience",
     """Rank-vs-rank view: strips away the score distributions and shows the pure
     ordinal relationship. Rank 1 = best. Points on the diagonal are movies the
     audience and the rubric agree about; distance from the diagonal = disagreement."""
-    d = df.copy()
+    d = _plotable(df, x_col).copy()
     n = len(d)
     d["x_rank"] = d[x_col].rank(ascending=False, method="min")
     d["y_rank"] = d["total"].rank(ascending=False, method="min")
@@ -273,7 +277,7 @@ def plot_rank(df: pd.DataFrame, x_col: str = "rt_audience",
     # set limits BEFORE allocation so textalloc sees the final canvas
     ax.set_xlim(n + 2, -1)
     ax.set_ylim(n + 2, -1)
-    place_labels(ax, xs, ys, labels, fontsize=8,
+    place_labels(ax, xs, ys, labels, fontsize=10,
                  scatter_sizes=np.full(len(xs), 70.0))
 
     # rank 1 at top-right so "best on both" reads as up-and-right
@@ -333,8 +337,7 @@ def run_comparison(kids: pd.DataFrame, adult: pd.DataFrame) -> None:
     prof_df.to_csv(OUT / "compare_dimension_profile.csv")
 
     dims = list(DIMENSIONS)
-    labels = ["Wealth /\nInherited\nSpecialness", "Agency", "Emotional\nCore",
-              "Music", "Inclusion", "Romance\nFraming"]
+    labels = [DIM_LABELS[d].replace(" & ", " &\n").replace(" ", "\n", 1) for d in dims]
     x = range(len(dims))
     w = 0.38
     fig, ax = plt.subplots(figsize=(13, 7))
@@ -377,7 +380,7 @@ def run_comparison(kids: pd.DataFrame, adult: pd.DataFrame) -> None:
         xs.append(row["x_rank"]); ys.append(row["y_rank"]); labels.append(row["title"])
     ax.set_xlim(n + 2, -1)
     ax.set_ylim(n + 2, -1)
-    place_labels(ax, xs, ys, labels, fontsize=8,
+    place_labels(ax, xs, ys, labels, fontsize=10,
                  scatter_sizes=np.full(len(xs), 75.0))
     ax.scatter([], [], color="#7cb342", marker="o", label="Kids film")
     ax.scatter([], [], color="#5c6bc0", marker="s", label="Adult film")
@@ -422,7 +425,7 @@ def plot_top_revenue(kids: pd.DataFrame, adult: pd.DataFrame, n: int = 10) -> Pa
         sizes.append(size)
     ax.set_xlim(40, 103)
     ax.set_ylim(0, 104)
-    place_labels(ax, xs, ys, labels, fontsize=9,
+    place_labels(ax, xs, ys, labels, fontsize=11,
                  scatter_sizes=np.asarray(sizes, float))
 
     ax.scatter([], [], color="#7cb342", marker="o", s=100, label="Kids film (top 10 by revenue)")

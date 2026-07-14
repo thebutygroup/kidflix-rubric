@@ -34,47 +34,218 @@ audited and contested. Contest them — that's the point of publishing the data.
 
 ---
 
-## The rubric (100 points)
+## The rubric
 
-| # | Dimension | Weight | Question it asks |
-|---|-----------|--------|------------------|
-| 1 | **Inherited Specialness & Wealth** | 40 | Does the protagonist matter because of what they *do*, or what they were *born as/into*? Is wealth/status the endorsed reward — whether inherited (*The Lion King*) or climbed into (*Cinderella*, *Goodfellas*)? |
-| 2 | **Protagonist Agency** | 17 | Do they solve their own story, or is rescue assembled around them? |
-| 3 | **Emotional Core** | 17 | What is the story *about* underneath the plot — grief, identity, belonging (high) vs. status and validation (low)? |
-| 4 | **Music** | 10 | Story-carrying original songs (10) · score-only/licensed (5) · grating (0). |
-| 5 | **Inclusiveness & Anti-Prejudice** | 10 | Distinguishes *passive absence* from *active harm*: `10` inclusion is the lesson · `8–9` strong, secondary · `7` representation, not the lesson · `5–6` neutral · `4` homogeneous default / missed opportunity (the classic princess canon) · `2–3` harmful stereotyping or othering present in the text · `0–1` active degradation or othering as spectacle (*Wolf of Wall Street*, *Peter Pan*'s musical number). Every score carries a band-labelled justification in the `commentary` JSON. |
-| 6 | **Romance Framing** | 6 | Absent/subverted (6) · balanced (3) · marriage-as-prize (0). |
+<!-- RUBRIC:START -->
+**Kidflix Rubric** — Opinionated, values-based rubric measuring what a film's structure teaches a child viewer. Weights must sum to 100.
 
-**Key scoring bands for dimension 1** (the load-bearing criterion):
-`40` genuinely ordinary protagonist (*Coco*, *Inside Out*) · `35` modest born-into
-status (*Moana*, chief's daughter) · `30` status critiqued as hollow (*Encanto*) ·
-`20` born-into greatness unexamined (*Cars*) · `16` royal-but-burdened (*Frozen*) ·
-`0` status ascension as the reward, born or climbed (*Cinderella*, *Aladdin*,
-*Scarface*). Note: **self-made ascension scores as low as inherited ascension** —
-the rubric penalises the endorsed outcome (wealth as the prize), not the pursuit of a
-livelihood (*The Princess and the Frog* scores 34).
+| Dimension | Weight | Question |
+|---|---:|---|
+| **Inherited Specialness & Wealth** | 40 | Does the protagonist matter because of what they DO, or what they were BORN AS / INTO — and is wealth/status the story's endorsed reward? Self-made ascension scores as low as inherited ascension: penalise the endorsed outcome, not the pursuit of a livelihood. |
+| **Protagonist Agency** | 17 | Do they solve their own story, or is rescue assembled around them? |
+| **Emotional Core** | 17 | What is the story about UNDER the plot? |
+| **Music** | 10 | Do songs carry the story? |
+| **Inclusiveness & Anti-Prejudice** | 10 | Distinguish PASSIVE ABSENCE from ACTIVE HARM. |
+| **Romance Framing** | 6 | Is marriage/being-chosen the prize? |
 
-**Tiers:** S ≥ 90 · A 75–89 · B 60–74 · C 45–59 · D 30–44 · F < 30.
-Totals and tiers are always computed by `analysis.py`, never hand-entered.
+**Tiers:** S ≥ 90 · A ≥ 75 · B ≥ 60 · C ≥ 45 · D ≥ 30 · F < prev
 
-## Plug in your own rubric
+<details><summary><b>Scoring bands per dimension (click to expand)</b></summary>
 
-Everything derives from **`rubric.json`** — dimensions, weights, per-dimension
-scoring bands with anchor examples, and tier cutoffs. To fork this with your own
-values (courage, faith, humor, whatever your family cares about):
 
-1. Edit `rubric.json`: rename/add/remove dimensions, set `max` weights that sum
-   to 100, write bands with a few anchor films each, and set your tier names.
-2. Give your CSV one column per dimension key (plus the standard metadata
-   columns) and a matching key per dimension in each `commentary` JSON object.
-3. Run the pipeline unchanged: `analysis.py`, `interactive.py`, `build_site.py`,
-   and the Claude API scoring prompt are all **generated from `rubric.json`** —
-   the API prompt embeds your bands and anchors automatically, and the prompt
-   hash recorded with each result changes when your rubric does.
+**Inherited Specialness & Wealth (0–40)**
 
-The weights forcing themselves to 100 is a feature: it makes you say out loud
-what you care about most. The bands with anchors are what make an LLM (or a
-co-parent) apply your values consistently instead of vibing.
+- `40` — genuinely ordinary protagonist; the story could happen to any kid (anchors: Coco 36, Inside Out 40, Spirited Away 40)
+- `35` — modest born-into status doing narrative work (Moana 35, chief's daughter)
+- `30` — wealth/status exists but is critiqued as hollow (Encanto 28; critique with residual glorification lands 20-30)
+- `20` — born-into greatness, unexamined; no depicted grind (Cars 20)
+- `16` — royal-but-burdened; status as isolation, still the source of specialness (Frozen 16)
+- `0` — status ascension is the endorsed reward, born or climbed (Cinderella 0, Aladdin 5, The Lion King 4, Goodfellas 6, Scarface 4, Wolf of Wall Street 2)
+
+**Protagonist Agency (0–17)**
+
+- `17` — solves their own story through their own choices (Moana, Anna in Frozen)
+- `13` — strong but split, diluted, or destiny-assisted
+- `8` — luck-heavy or shared solving
+- `0` — passive; rescued at their own climax (Sleeping Beauty 0, Snow White 2, The Little Mermaid 4 — Eric kills the villain)
+
+**Emotional Core (0–17)**
+
+- `17` — deep honest core: grief, identity, belonging, fear-vs-love (Inside Out, Coco, Up, Frozen)
+- `13` — real substance, simpler arc (Cars 15)
+- `8` — standard adventure/friendship beats
+- `0` — core is status, validation, or being chosen (Sleeping Beauty 0)
+
+**Music (0–10)**
+
+- `10` — original songs that carry story (Moana, Frozen, Coco)
+- `8` — strong songs with gaps, or performance-central diegetic music
+- `5` — score only, or licensed soundtrack (Cars 5, Inside Out 5)
+- `0` — actively grating or hollow
+
+**Inclusiveness & Anti-Prejudice (0–10)**
+
+- `10` — inclusion/anti-prejudice IS the lesson; prejudice-as-plot (Zootopia, The Land Before Time, Shrek, Mulan)
+- `8` — strong inclusion content, secondary to the main arc (Lilo & Stitch 8)
+- `7` — meaningful representation; not the lesson (Moana 7, Soul 7)
+- `5` — neutral: nothing taught, no group harmed (non-human casts, Toy Story 5)
+- `4` — homogeneous world presented as default; passive exclusion; missed opportunity (Cinderella 4, Sleeping Beauty 4)
+- `2` — harmful stereotyping or othering PRESENT in the text (Aladdin 2, The Lion King 2, Scarface 2, The Godfather 2, Wizard of Oz 2)
+- `0` — active degradation or othering AS SPECTACLE (Wolf of Wall Street 0, Peter Pan 0)
+
+**Romance Framing (0–6)**
+
+- `6` — absent, or actively subverted (Frozen 6, Brave 6)
+- `3` — present but balanced
+- `0` — marriage/being-chosen is the prize (Little Mermaid 0 — her voice for a man; Cinderella 0 — identified by shoe size)
+
+</details>
+<!-- RUBRIC:END -->
+
+Totals and tiers are always computed by `analysis.py`, never hand-entered. The
+block above is generated from `rubric.json` by `python scripts/render_rubric.py
+--inject` — edit the JSON, rerun, and the README stays truthful.
+
+## Create your own rubric in five steps
+
+1. **Write down the lessons you care about.** Not genres, not quality — lessons.
+   "I don't want stories where wealth is the reward." "I want protagonists who
+   solve their own problems." Aim for 4–7 of them; more than that and none of
+   them matter.
+2. **Weight them to sum to 100.** This is the uncomfortable step and the most
+   valuable one: it forces you to say which value wins when they conflict.
+3. **Write scoring bands for each dimension** — what full marks looks like, what
+   zero looks like, and 2–4 levels between. Every band needs at least one anchor
+   film you know cold, with the score you'd give it. Anchors are what make the
+   rubric applicable by someone (or something) other than you.
+4. **Calibrate on five films before scoring at scale.** Score them by hand
+   against your bands. When a result offends your intuition, the fix is almost
+   never "change that film's number" — it's "a band is drawn in the wrong
+   place," followed by rescoring everything the fix touches. Iterate until five
+   films in a row land where your gut agrees.
+5. **Pressure-test the edge cases.** Ours: does self-made wealth ascension score
+   like inherited? (Yes — the endorsed outcome is what a viewer absorbs.) Does a
+   film that merely *lacks* diversity score like one that actively degrades a
+   group? (No — passive absence is not active harm.) Your edge cases will be
+   different, but you'll know them when a score makes you argue out loud.
+
+## Run the whole thing yourself, end to end
+
+```bash
+# 1. Fork/clone and install
+git clone https://github.com/thebutygroup/kidflix-rubric.git && cd kidflix-rubric
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+# 2. Make the rubric yours
+#    Edit rubric.json: your dimensions, weights (sum to 100), bands, anchors,
+#    tier names. Then refresh the README table:
+python scripts/render_rubric.py --inject
+
+# 3. Reset the data to your rubric
+#    Give data/movies.csv one column per dimension key plus the metadata
+#    columns (title,year,mpaa,<dims...>,rt_critic,rt_audience,revenue_musd,
+#    revenue_adj_musd,icon,commentary). Start empty except headers if you're
+#    scoring from scratch.
+
+# 4. Score a catalogue via the Claude API (batch = 50% price, overnight)
+export ANTHROPIC_API_KEY=sk-ant-...
+python scripts/score_movies_api.py --file new_titles.txt --out data/movies.csv
+#    The prompt is generated from YOUR rubric.json automatically.
+#    Spot-check one film first: add --sync and a single title.
+
+# 5. Fill in the manual columns
+#    mpaa, RT critic/audience, revenue (nominal + inflation-adjusted) — sources
+#    and caveats in the data dictionary below.
+
+# 6. Build charts + interactive page + deployable site
+python analysis.py
+python interactive.py
+python build_site.py
+
+# 7. Publish
+#    GitHub Pages: Settings -> Pages -> branch main, folder /docs.
+#    Custom domain: put yours in docs/CNAME (or delete the file) and add a
+#    DNS CNAME record at your registrar. Enforce HTTPS once the cert issues.
+```
+
+Costs, for planning: scoring ~100 films at 3 runs each is a few hundred batch
+requests — well under a dollar on Sonnet. Everything else is free static
+hosting.
+
+## The rubric, rendered
+
+| Dimension | Weight | The question it asks | Full marks | Zero |
+|---|---:|---|---|---|
+| **Inherited Specialness & Wealth** | 40 | Does the protagonist matter for what they do, or what they were born as? Is wealth the endorsed reward? | Genuinely ordinary kid (*Coco*, *Spirited Away*) | Status ascension as the reward, born or climbed (*Cinderella*, *The Lion King*, *Scarface*) |
+| **Protagonist Agency** | 17 | Do they solve their own story? | Own choices carry the climax (*Moana*) | Rescued at their own climax (*Sleeping Beauty*) |
+| **Emotional Core** | 17 | What is the story about underneath the plot? | Grief, identity, belonging (*Inside Out*, *Up*) | Status, validation, being chosen |
+| **Music** | 10 | Do songs carry the story? | Story-carrying original songs (*Moana*) | Grating or hollow |
+| **Inclusiveness & Anti-Prejudice** | 10 | Passive absence vs active harm | Prejudice-as-plot, refuted (*Zootopia*) | Degradation as spectacle (*Wolf of Wall Street*, *Peter Pan*'s number) |
+| **Romance Framing** | 6 | Is marriage the prize? | Absent or subverted (*Frozen*) | Her voice for a man (*The Little Mermaid*) |
+
+Full band definitions with all anchor scores live in [`rubric.json`](rubric.json) —
+that file is the single source of truth; everything below derives from it.
+
+## Create your own rubric
+
+The system is built to run on *your* values, not these. Five steps:
+
+1. **List the lessons you care about** — what you want the stories in your house
+   to teach, and what you don't. Aim for 4–7 dimensions; more than that and no
+   single one can matter.
+2. **Weight them to sum to 100.** This is deliberately uncomfortable: it forces
+   you to say what matters *most*. The build fails loudly if they don't sum.
+3. **Write scoring bands for each dimension** in `rubric.json`: what full marks
+   looks like, what zero looks like, and 2–4 levels between. Every band needs at
+   least one **anchor film** you know cold, with the score you'd give it — the
+   anchors are what make an LLM apply your bands instead of its own instincts.
+4. **Calibrate on five films before scoring at scale.** Score them by hand
+   against your bands, then via the API (`--sync` mode, a cent each). Where the
+   scores feel wrong, fix the *band wording*, never the individual number, and
+   rescore. Two or three iterations is normal — this is the real work, and it's
+   genuinely clarifying.
+5. **Sense-test the edges.** Ask your rubric hard questions: does self-made
+   ascension score like inherited? Does passive absence score like active harm?
+   Every inconsistency you find now is a hundred bad scores you prevent later.
+
+Mechanically, a custom rubric means: edit `rubric.json` (dimension keys, `max`
+weights, `label`, `question`, `bands`, tier names), give your CSV one column per
+dimension key, and run the unchanged pipeline — the analysis, the interactive
+chart, and the Claude scoring prompt are all generated from `rubric.json`.
+
+## Run the whole thing yourself
+
+From zero to your own live tier list:
+
+```bash
+# 1. get the code
+git clone https://github.com/thebutygroup/kidflix-rubric.git && cd kidflix-rubric
+python -m venv .venv && source .venv/bin/activate    # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+# 2. make it yours
+#    edit rubric.json (see "Create your own rubric" above)
+#    put your films in a titles file, one "Title,year" per line
+cp new_titles.txt my_titles.txt
+
+# 3. score via the Claude API (batch = 50% price, fine for overnight)
+export ANTHROPIC_API_KEY=sk-ant-...                  # from console.anthropic.com
+python scripts/score_movies_api.py --file my_titles.txt --runs 3 --out data/movies.csv
+
+# 4. fill metadata for the new rows (rt_critic, rt_audience, revenue, mpaa)
+#    scores work without it, but films only appear on charts once RT is filled
+
+# 5. build charts + interactive page + deployable site
+python analysis.py
+python build_site.py
+
+# 6. publish (optional): push to GitHub, enable Pages on /docs,
+#    point a CNAME at <username>.github.io  — see Deployment below
+```
+
+Cost for a 100-film catalogue at 3 runs each: under a dollar. Time: minutes of
+yours, up to a few hours of the batch queue's.
 
 ## Datasets
 
@@ -183,32 +354,6 @@ lives. On the scoring box, `run_batch.ps1` wraps the whole loop:
 pull → batch-score `new_titles.txt` → commit scores → push. The development
 machine pulls, fills `mpaa`/RT/revenue, runs `analysis.py` and `build_site.py`,
 and pushes — which, once GitHub Pages is enabled on `/docs`, is also the deploy.
-
-## Reproducing this analysis from scratch
-
-Someone starting from zero would follow these steps (this is the complete recipe):
-
-1. **Define your values.** Decide what you don't want a film teaching your kid.
-   Ours: wealth/status as reward, protagonists who matter by birth, passivity,
-   marriage-as-prize. Decide what you *do* want: honest emotional cores, agency,
-   inclusion, good music.
-2. **Weight them.** Force the weights to sum to 100 and make the ranking argue with
-   you — we started wealth at 50%, settled at 40% after pressure-testing against
-   films we had intuitions about (Frozen ≈ B, Moana ≈ S).
-3. **Write scoring bands** per dimension with anchor examples at each level, then
-   **calibrate on 5 films** you know well before scoring at scale. Adjust bands, not
-   individual scores, when something feels wrong.
-4. **Score in bulk** with a one-line-per-dimension justification (the `commentary`
-   JSON). Pressure-test edge cases: does self-made ascension score like inherited?
-   (Ours: yes — see the Goodfellas/Cinderella equivalence.) Does allegory count for
-   inclusion? (Ours: yes — Land Before Time.)
-5. **Add external measures** — critic %, audience %, revenue (nominal + adjusted) —
-   so the rubric can be *compared* against acclaim, love, and money rather than
-   existing in a vacuum.
-6. **Run the analysis**: `pip install -r requirements.txt && python analysis.py &&
-   python interactive.py`. Read the off-diagonal quadrants: that's where the rubric
-   adds information popularity can't.
-7. **Publish data + reasoning together** so scores can be audited and disputed.
 
 ## Deployment
 
