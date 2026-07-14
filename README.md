@@ -9,7 +9,7 @@ Live at: **https://analysis.thebutygroup.com/kids-movies/**
 the Claude API (batch, temperature 0, median-of-3) · validation of API scores
 against the hand calibration in progress.
 
-![audience scatter](output/scatter_audience.png)
+![Audience love vs rubric values](docs/kids-movies/charts/scatter_audience.png)
 
 ---
 

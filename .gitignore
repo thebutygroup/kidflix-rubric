@@ -3,10 +3,7 @@ __pycache__/
 *.pyc
 # never publish poster art or other rights-encumbered icons
 icons/
-.venv/
-venv/
-.DS_Store
-.venv/
-venv/
-.DS_Store
-*.zip
+# generated artifacts: rebuild with analysis.py / build_site.py
+output/
+batch_*.json
+validation_*

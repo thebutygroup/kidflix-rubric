@@ -63,8 +63,15 @@ def main() -> None:
     pjs = pathlib.Path(plotly.__file__).parent / "package_data" / "plotly.min.js"
     shutil.copy(pjs, KM / "plotly.min.js")
 
-    for png in (ROOT / "output").glob("*.png"):
-        shutil.copy(png, KM / "charts" / png.name)
+    # Curated charts only: each earns its place in the story.
+    CHARTS = [
+        "scatter_audience.png",     # headline: audience love vs values, quadrants
+        "scatter_rank.png",         # the pure ordinal relationship
+        "compare_dimensions.png",   # kids vs adult dimension profile
+        "compare_top_revenue.png",  # the biggest earners, absolute scores
+    ]
+    for name in CHARTS:
+        shutil.copy(ROOT / "output" / name, KM / "charts" / name)
 
     for csv in [*(ROOT / "data").glob("*.csv"),
                 *(ROOT / "output").glob("*_scored.csv"),
