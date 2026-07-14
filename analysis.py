@@ -19,8 +19,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import matplotlib
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -39,7 +37,7 @@ OUT = ROOT / "output"
 # the API prompt derive from it. Weights must sum to 100.
 # ---------------------------------------------------------------------------
 import json as _json
-RUBRIC = _json.loads((ROOT / "rubric.json").read_text())
+RUBRIC = _json.loads((ROOT / "rubric.json").read_text(encoding="utf-8"))
 DIMENSIONS = {k: v["max"] for k, v in RUBRIC["dimensions"].items()}
 DIM_LABELS = {k: v["label"] for k, v in RUBRIC["dimensions"].items()}
 assert sum(DIMENSIONS.values()) == 100, "rubric.json weights must sum to 100"
@@ -55,7 +53,8 @@ RUBRIC_THRESHOLD = None  # None -> median of rubric total
 
 
 
-def place_labels(ax, xs, ys, labels, fontsize=8, scatter_sizes=None):
+def place_labels(ax, xs, ys, labels, fontsize=8, scatter_sizes=None,
+                 max_distance=0.2, min_distance=0.008, margin=0.006):
     """Guaranteed-non-overlapping labels via textalloc: allocates each label in
     free canvas space, aware of every point and every other label, drawing a
     thin leader line when a label had to move. Falls back to adjustText only
@@ -67,8 +66,8 @@ def place_labels(ax, xs, ys, labels, fontsize=8, scatter_sizes=None):
             scatter_sizes=scatter_sizes,
             textsize=fontsize,
             linecolor="gray", linewidth=0.5,
-            min_distance=0.008, max_distance=0.2,
-            margin=0.006, nbr_candidates=400,
+            min_distance=min_distance, max_distance=max_distance,
+            margin=margin, nbr_candidates=600,
             draw_lines=True, avoid_label_lines_overlap=True,
         )
     except Exception as e:  # pragma: no cover
@@ -278,7 +277,8 @@ def plot_rank(df: pd.DataFrame, x_col: str = "rt_audience",
     ax.set_xlim(n + 2, -1)
     ax.set_ylim(n + 2, -1)
     place_labels(ax, xs, ys, labels, fontsize=10,
-                 scatter_sizes=np.full(len(xs), 70.0))
+                 scatter_sizes=np.full(len(xs), 70.0),
+                 max_distance=0.045, min_distance=0.004, margin=0.004)
 
     # rank 1 at top-right so "best on both" reads as up-and-right
     ax.set_xlabel(f"Audience rank (1 = most loved of {n})", fontsize=12)
@@ -366,7 +366,7 @@ def run_comparison(kids: pd.DataFrame, adult: pd.DataFrame) -> None:
     n = len(both)
     both["x_rank"] = both["rt_audience"].rank(ascending=False, method="min")
     both["y_rank"] = both["total"].rank(ascending=False, method="min")
-    fig, ax = plt.subplots(figsize=(19, 19))
+    fig, ax = plt.subplots(figsize=(21, 21))
     ax.plot([1, n], [1, n], color="gray", lw=1.5, alpha=0.6)
     mid = (n + 1) / 2
     ax.axvline(mid, color="gray", ls="--", lw=1.2, alpha=0.7)

@@ -5,16 +5,17 @@ Layout produced (GitHub Pages serves docs/ at https://analysis.thebutygroup.com)
 
 docs/
   CNAME                      -> custom-domain binding for GitHub Pages
-  index.html                 -> tiny landing page linking to /kids-movies/
+  index.html                 -> tiny landing page linking to the charts
+  ranked_chart/index.html    -> short link, redirects to /kids-movies/rank/
   kids-movies/
-    index.html               -> the interactive chart (self-contained data)
+    index.html               -> interactive scores view (self-contained data)
+    rank/index.html          -> interactive rank view (shares ../plotly.min.js)
     plotly.min.js            -> self-hosted, pinned plotly (no CDN dependency)
-    charts/*.png             -> the static analysis charts
+    charts/*.png             -> the curated static analysis charts
     data/*.csv               -> full datasets + computed outputs
 
-Run: python build_site.py   (regenerates the interactive chart first)
+Run: python build_site.py   (regenerates the interactive pages first)
 """
-
 from __future__ import annotations
 
 import pathlib
@@ -25,8 +26,13 @@ import sys
 ROOT = pathlib.Path(__file__).parent
 DOCS = ROOT / "docs"
 KM = DOCS / "kids-movies"
-
 DOMAIN = "analysis.thebutygroup.com"
+
+# Output filenames emitted by interactive.py. If interactive.py names its
+# rank page differently, fix RANK_HTML here (verify with:
+#   findstr /C:".html" interactive.py).
+SCORES_HTML = "interactive.html"
+RANK_HTML = "interactive_rank.html"
 
 LANDING = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -39,13 +45,23 @@ padding:0 1rem;color:#222}}a{{color:#2e7d32}}</style></head>
 <ul>
   <li><a href="/kids-movies/">Kids' movies: what they actually teach</a> —
       a values rubric vs. audience scores, interactive.</li>
+  <li><a href="/ranked_chart/">The ranked chart</a> —
+      audience rank vs. rubric rank, every film nameable.</li>
 </ul>
 </body></html>
 """
 
+REDIRECT = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta http-equiv="refresh" content="0; url=/kids-movies/rank/">
+<link rel="canonical" href="https://analysis.thebutygroup.com/kids-movies/rank/">
+<title>Ranked chart</title></head>
+<body><a href="/kids-movies/rank/">Ranked chart</a></body></html>
+"""
+
 
 def main() -> None:
-    # 1. regenerate the interactive chart from current data
+    # 1. regenerate the interactive pages from current data
     subprocess.run([sys.executable, str(ROOT / "interactive.py")], check=True)
 
     # 2. assemble docs/
@@ -54,11 +70,28 @@ def main() -> None:
     (KM / "charts").mkdir(parents=True)
     (KM / "data").mkdir()
 
-    (DOCS / "CNAME").write_text(DOMAIN + "\n")
-    (DOCS / "index.html").write_text(LANDING)
+    (DOCS / "CNAME").write_text(DOMAIN + "\n", encoding="utf-8")
+    (DOCS / "index.html").write_text(LANDING, encoding="utf-8")
 
-    shutil.copy(ROOT / "output" / "interactive.html", KM / "index.html")
+    # interactive pages
+    shutil.copy(ROOT / "output" / SCORES_HTML, KM / "index.html")
+    rank_src = ROOT / "output" / RANK_HTML
+    if rank_src.exists():
+        (KM / "rank").mkdir()
+        shutil.copy(rank_src, KM / "rank" / "index.html")
+    else:
+        print(f"WARNING: output/{RANK_HTML} not found — no rank page built, "
+              f"and /ranked_chart will redirect to a 404. Check RANK_HTML "
+              f"against what interactive.py emits.")
 
+    # short link: /ranked_chart -> the rank view
+    rc = DOCS / "ranked_chart"
+    if rc.exists():
+        shutil.rmtree(rc)
+    rc.mkdir()
+    (rc / "index.html").write_text(REDIRECT, encoding="utf-8")
+
+    # self-hosted plotly, shared by both interactive pages
     import plotly
     pjs = pathlib.Path(plotly.__file__).parent / "package_data" / "plotly.min.js"
     shutil.copy(pjs, KM / "plotly.min.js")

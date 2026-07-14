@@ -25,7 +25,7 @@ import plotly.graph_objects as go
 ROOT = Path(__file__).parent
 OUT = ROOT / "output"
 
-RUBRIC = json.loads((ROOT / "rubric.json").read_text())
+RUBRIC = json.loads((ROOT / "rubric.json").read_text(encoding="utf-8"))
 DIM_MAX = {k: v["max"] for k, v in RUBRIC["dimensions"].items()}
 
 
@@ -33,6 +33,11 @@ def load(path: Path, segment: str) -> pd.DataFrame:
     df = pd.read_csv(path)
     df["total"] = df[list(DIM_MAX)].sum(axis=1)
     df["segment"] = segment
+    n = len(df)
+    df = df.dropna(subset=["rt_audience", "rt_critic", "revenue_adj_musd"])
+    if len(df) < n:
+        print(f"  {segment}: {n - len(df)} film(s) scored but awaiting "
+              f"RT/revenue metadata; excluded from the interactive chart")
     return df
 
 

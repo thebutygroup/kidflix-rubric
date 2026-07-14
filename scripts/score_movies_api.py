@@ -53,93 +53,38 @@ MODEL = os.environ.get("KIDFLIX_MODEL", "claude-sonnet-4-6")  # pin a dated snap
 TEMPERATURE = 0.0
 MAX_TOKENS = 1500
 
-DIM_MAX = {"wealth": 40, "agency": 17, "core": 17,
-           "music": 10, "inclusion": 10, "romance": 6}
+RUBRIC = json.loads((ROOT / "rubric.json").read_text(encoding="utf-8"))
+DIM_MAX = {k: v["max"] for k, v in RUBRIC["dimensions"].items()}
 
-RUBRIC_PROMPT = """\
-You are scoring a film against the Kidflix Rubric: an opinionated, values-based
-rubric measuring what a film's STRUCTURE teaches a child viewer, from one specific
-parenting angle. You are not rating quality, craft, or enjoyment. Apply the bands
-exactly as written; when torn between two bands, pick the lower one and say why.
 
-DIMENSION 1 — INHERITED SPECIALNESS & WEALTH (0-40). Question: does the protagonist
-matter because of what they DO, or what they were BORN AS / INTO — and is
-wealth/status the story's endorsed reward? Self-made ascension scores as low as
-inherited ascension: the rubric penalises the endorsed outcome, not the pursuit of
-a livelihood.
-  40 = genuinely ordinary protagonist; the story could happen to any kid
-       (anchors: Coco 36, Inside Out 40, Spirited Away 40)
-  35 = modest born-into status doing narrative work (Moana 35, chief's daughter)
-  30 = wealth/status exists but is critiqued as hollow (Encanto 28, Cars-style
-       critique with residual glorification lands 20-30)
-  20 = born-into greatness, unexamined; no depicted grind (Cars 20)
-  16 = royal-but-burdened; status as isolation, still the source of specialness
-       (Frozen 16)
-  0-8 = status ascension is the endorsed reward, born or climbed
-       (Cinderella 0, Aladdin 5, The Lion King 4, Goodfellas 6, Scarface 4,
-        Wolf of Wall Street 2)
+def build_rubric_prompt() -> str:
+    """Generate the scoring prompt from rubric.json so custom rubrics
+    (different dimensions, weights, or bands) need no code changes."""
+    lines = [
+        f"You are scoring a film against the {RUBRIC['name']}: "
+        f"{RUBRIC['description']} You are not rating quality, craft, or "
+        "enjoyment. Apply the bands exactly as written; when torn between two "
+        "bands, pick the lower one and say why.", ""]
+    for i, (key, d) in enumerate(RUBRIC["dimensions"].items(), 1):
+        lines.append(f"DIMENSION {i} — {d['label'].upper()} (0-{d['max']}). {d['question']}")
+        for score, desc in d["bands"]:
+            lines.append(f"  {score} = {desc}")
+        lines.append("")
+    score_fields = ", ".join(f'"{k}": <0-{v["max"]}>' for k, v in RUBRIC["dimensions"].items())
+    comm_fields = []
+    for k, d in RUBRIC["dimensions"].items():
+        fmt = d.get("commentary_format", "<1 sentence, cite the band logic>")
+        comm_fields.append(f'    "{k}": "{fmt}"')
+    lines += [
+        "OUTPUT: respond with ONLY a JSON object, no markdown fences, no preamble:",
+        "{", '  "title": "<film>", "year": <int>,', f"  {score_fields},",
+        '  "commentary": {', '    "overall": "<2-3 sentence justification of the whole profile>",',
+        ",\n".join(comm_fields), "  }", "}",
+        'If you do not know the film well enough to score it honestly, return',
+        '{"error": "insufficient knowledge", "title": "<film>"} instead of guessing.']
+    return "\n".join(lines)
 
-DIMENSION 2 — PROTAGONIST AGENCY (0-17).
-  17 = solves their own story through their own choices (Moana, Anna in Frozen)
-  13-15 = strong but split, diluted, or destiny-assisted
-  8 = luck-heavy or shared solving
-  0-4 = passive; rescued at their own climax (Sleeping Beauty 0, Snow White 2,
-        The Little Mermaid 4 — Eric kills the villain)
-
-DIMENSION 3 — EMOTIONAL CORE (0-17). What the story is about UNDER the plot.
-  17 = deep honest core: grief, identity, belonging, fear-vs-love
-       (Inside Out, Coco, Up, Frozen)
-  13-15 = real substance, simpler arc (Cars 15)
-  8 = standard adventure/friendship beats
-  0-4 = core is status, validation, or being chosen (Sleeping Beauty 0)
-
-DIMENSION 4 — MUSIC (0-10).
-  10 = original songs that carry story (Moana, Frozen, Coco)
-  8-9 = strong songs with gaps, or performance-central diegetic music
-  5-6 = score only, or licensed soundtrack (Cars 5, Inside Out 5)
-  0-3 = actively grating or hollow
-
-DIMENSION 5 — INCLUSIVENESS & ANTI-PREJUDICE (0-10). Distinguish PASSIVE ABSENCE
-from ACTIVE HARM:
-  10 = inclusion/anti-prejudice IS the lesson; prejudice-as-plot
-       (Zootopia, The Land Before Time, Shrek, Mulan)
-  8-9 = strong inclusion content, secondary to the main arc (Lilo & Stitch 8)
-  7 = meaningful representation; not the lesson (Moana 7, Soul 7)
-  5-6 = neutral: nothing taught, no group harmed (non-human casts, Toy Story 5)
-  4 = homogeneous world presented as default; passive exclusion; missed
-      opportunity (the classic princess canon: Cinderella 4, Sleeping Beauty 4)
-  2-3 = harmful stereotyping or othering PRESENT in the text
-       (Aladdin 2 orientalist caricature, The Lion King 2 hyena underclass,
-        Scarface 2, The Godfather 2, Wizard of Oz 2 wicked-because-ugly)
-  0-1 = active degradation or othering AS SPECTACLE
-       (Wolf of Wall Street 0 women-as-commodities, Peter Pan 0 the
-        'What Made the Red Man Red' number)
-
-DIMENSION 6 — ROMANCE FRAMING (0-6).
-  6 = absent, or actively subverted (Frozen 6, Brave 6)
-  3-5 = present but balanced
-  0-2 = marriage/being-chosen is the prize (Little Mermaid 0 — her voice for a
-        man; Cinderella 0 — identified by shoe size)
-
-OUTPUT: respond with ONLY a JSON object, no markdown fences, no preamble:
-{
-  "title": "<film>",
-  "year": <int>,
-  "wealth": <0-40>, "agency": <0-17>, "core": <0-17>,
-  "music": <0-10>, "inclusion": <0-10>, "romance": <0-6>,
-  "commentary": {
-    "overall": "<2-3 sentence justification of the whole profile>",
-    "wealth": "<1 sentence, cite the band logic>",
-    "agency": "<1 sentence>",
-    "core": "<1 sentence>",
-    "music": "<1 sentence>",
-    "inclusion": "Band <score>/10 (<band name>): <1 sentence reason>",
-    "romance": "<1 sentence>"
-  }
-}
-If you do not know the film well enough to score it honestly, return
-{"error": "insufficient knowledge", "title": "<film>"} instead of guessing.
-"""
+RUBRIC_PROMPT = build_rubric_prompt()
 
 PROMPT_HASH = hashlib.sha256(RUBRIC_PROMPT.encode()).hexdigest()[:12]
 

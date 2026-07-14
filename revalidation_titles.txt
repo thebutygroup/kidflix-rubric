@@ -1,0 +1,20 @@
+Rocky,1976
+American History X,1998
+Shawshank Redemption,1994
+Parasite,2019
+Trainspotting,1996
+There Will Be Blood,2007
+The Big Lebowski,1998
+Pulp Fiction,1994
+Fight Club,1999
+Titanic,1997
+Forrest Gump,1994
+The Matrix,1999
+The Dark Knight,2008
+American Gangster,2007
+The Godfather,1972
+Goodfellas,1990
+Scarface,1983
+The Wolf of Wall Street,2013
+The Princess and the Frog,2009
+Willy Wonka & the Chocolate Factory,1971
