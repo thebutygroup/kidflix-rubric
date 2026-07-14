@@ -6,10 +6,9 @@ Layout produced (GitHub Pages serves docs/ at https://analysis.thebutygroup.com)
 docs/
   CNAME                      -> custom-domain binding for GitHub Pages
   index.html                 -> tiny landing page linking to the charts
-  ranked_chart/index.html    -> short link, redirects to /kids-movies/rank/
+  ranked_chart/index.html    -> interactive rank view (uses ../kids-movies/plotly.min.js)
   kids-movies/
-    index.html               -> interactive scores view (self-contained data)
-    rank/index.html          -> interactive rank view (shares ../plotly.min.js)
+    index.html               -> interactive scores view
     plotly.min.js            -> self-hosted, pinned plotly (no CDN dependency)
     charts/*.png             -> the curated static analysis charts
     data/*.csv               -> full datasets + computed outputs
@@ -51,15 +50,6 @@ padding:0 1rem;color:#222}}a{{color:#2e7d32}}</style></head>
 </body></html>
 """
 
-REDIRECT = """<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta http-equiv="refresh" content="0; url=/kids-movies/rank/">
-<link rel="canonical" href="https://analysis.thebutygroup.com/kids-movies/rank/">
-<title>Ranked chart</title></head>
-<body><a href="/kids-movies/rank/">Ranked chart</a></body></html>
-"""
-
-
 def main() -> None:
     # 1. regenerate the interactive pages from current data
     subprocess.run([sys.executable, str(ROOT / "interactive.py")], check=True)
@@ -75,21 +65,17 @@ def main() -> None:
 
     # interactive pages
     shutil.copy(ROOT / "output" / SCORES_HTML, KM / "index.html")
-    rank_src = ROOT / "output" / RANK_HTML
-    if rank_src.exists():
-        (KM / "rank").mkdir()
-        shutil.copy(rank_src, KM / "rank" / "index.html")
-    else:
-        print(f"WARNING: output/{RANK_HTML} not found — no rank page built, "
-              f"and /ranked_chart will redirect to a 404. Check RANK_HTML "
-              f"against what interactive.py emits.")
-
-    # short link: /ranked_chart -> the rank view
     rc = DOCS / "ranked_chart"
     if rc.exists():
         shutil.rmtree(rc)
     rc.mkdir()
-    (rc / "index.html").write_text(REDIRECT, encoding="utf-8")
+    rank_src = ROOT / "output" / RANK_HTML
+    if rank_src.exists():
+        shutil.copy(rank_src, rc / "index.html")
+    else:
+        raise SystemExit(f"output/{RANK_HTML} not found — interactive.py did "
+                         f"not emit the rank view; refusing to build a broken "
+                         f"/ranked_chart page.")
 
     # self-hosted plotly, shared by both interactive pages
     import plotly

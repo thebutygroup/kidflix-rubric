@@ -1,17 +1,20 @@
 """
-Interactive (Plotly) version of the values-vs-audience scatter.
+Interactive (Plotly) pages: one template, multiple views.
 
-Produces output/interactive.html — a single self-contained page suitable for
-static hosting (GitHub Pages, PythonAnywhere static dir, etc.).
+Emits:
+  output/interactive.html       scores view  -> served at /kids-movies/
+  output/interactive_rank.html  rank view    -> served at /ranked_chart/
 
-Zoom-adaptive labels: at full zoom-out only the highest-priority points are
-labelled (priority = rubric total); zooming in reveals progressively more
-labels until every visible point is named. Implemented with a small JS
-handler on plotly_relayout, so it needs no server.
+Shared behaviour (written once, applied to every view):
+  - zoom-adaptive labels: ~14 highest-rubric films labelled at full zoom-out,
+    the budget grows as the viewport shrinks (JS on plotly_relayout, no server)
+  - hover cards rendering the per-dimension commentary JSON
+  - adult films as a legendonly trace (hidden until clicked)
+  - scrollZoom: mouse wheel zooms, centred on the cursor
+  - rows missing RT or revenue metadata excluded, with a console note
 
-Filtering: kids and adult films are separate traces — click the legend to
-isolate either segment (double-click to solo). Hover shows the per-dimension
-scores and JSON commentary.
+Adding a chart = one view function + one entry in VIEWS + one build_site.py
+landing-page list item.
 """
 
 from __future__ import annotations
@@ -38,7 +41,7 @@ def load(path: Path, segment: str) -> pd.DataFrame:
     if len(df) < n:
         print(f"  {segment}: {n - len(df)} film(s) scored but awaiting "
               f"RT/revenue metadata; excluded from the interactive chart")
-    return df
+    return df.reset_index(drop=True)
 
 
 def hover_text(row: pd.Series) -> str:
@@ -64,8 +67,10 @@ def hover_text(row: pd.Series) -> str:
     return "<br>".join(wrapped)
 
 
-def make_trace(df: pd.DataFrame, name: str, colour: str, symbol: str,
+def make_trace(df: pd.DataFrame, xs, ys, name: str, colour: str, symbol: str,
                visible=True, initial_labels: int = 14) -> go.Scatter:
+    """One segment as a trace. xs/ys are the view's coordinates; label
+    priority is always the rubric total (customdata[1])."""
     if visible is True and initial_labels:
         cutoff = df["total"].nlargest(initial_labels).min()
         text = [t if tot >= cutoff else "" for t, tot in zip(df["title"], df["total"])]
@@ -73,7 +78,7 @@ def make_trace(df: pd.DataFrame, name: str, colour: str, symbol: str,
         text = [""] * len(df)
     return go.Scatter(
         visible=visible,
-        x=df["rt_audience"].tolist(), y=[int(t) for t in df["total"]],
+        x=list(xs), y=list(ys),
         mode="markers+text",
         name=name,
         text=text,                                # top-N at load; JS refines on zoom
@@ -104,9 +109,9 @@ function updateLabels() {
     if (!FULL) FULL = fullRanges();
     var fl = gd._fullLayout;
     var xr = fl.xaxis.range, yr = fl.yaxis.range;
-    var areaFrac = Math.max(1e-6,
+    var areaFrac = Math.max(1e-6, Math.abs(
         ((xr[1]-xr[0]) * (yr[1]-yr[0])) /
-        ((FULL.x[1]-FULL.x[0]) * (FULL.y[1]-FULL.y[0])));
+        ((FULL.x[1]-FULL.x[0]) * (FULL.y[1]-FULL.y[0]))));
     // label budget: ~14 fully zoomed out, growing as the viewport shrinks
     var budget = Math.round(14 / areaFrac);
 
@@ -152,30 +157,28 @@ gd.on('plotly_restyle', function(e) {
 updateLabels();
 """
 
+TIERS = [("S", 90, 104, "#2e7d32"), ("A", 75, 90, "#7cb342"),
+         ("B", 60, 75, "#fbc02d"), ("C", 45, 60, "#fb8c00"),
+         ("D", 30, 45, "#e64a19"), ("F", 0, 30, "#b71c1c")]
 
-def main() -> None:
-    kids = load(ROOT / "data" / "movies.csv", "kids")
-    adult = load(ROOT / "data" / "movies_adult.csv", "adult")
 
+def scores_view(kids: pd.DataFrame, adult: pd.DataFrame) -> go.Figure:
+    """Audience % (x) vs rubric total (y), tier bands, bubble = adj. gross."""
     fig = go.Figure([
-        make_trace(kids, f"Kids films (n={len(kids)})", "#7cb342", "circle"),
-        make_trace(adult, f"Adult films (n={len(adult)}) — click to show", "#5c6bc0",
+        make_trace(kids, kids["rt_audience"], [int(t) for t in kids["total"]],
+                   f"Kids films (n={len(kids)})", "#7cb342", "circle"),
+        make_trace(adult, adult["rt_audience"], [int(t) for t in adult["total"]],
+                   f"Adult films (n={len(adult)}) — click to show", "#5c6bc0",
                    "square", visible="legendonly"),
     ])
-
-    # tier bands
-    tiers = [("S", 90, 104, "#2e7d32"), ("A", 75, 90, "#7cb342"),
-             ("B", 60, 75, "#fbc02d"), ("C", 45, 60, "#fb8c00"),
-             ("D", 30, 45, "#e64a19"), ("F", 0, 30, "#b71c1c")]
-    for name, lo, hi, colour in tiers:
+    for name, lo, hi, colour in TIERS:
         fig.add_hrect(y0=lo, y1=hi, fillcolor=colour, opacity=0.05, line_width=0)
         fig.add_annotation(x=22, y=(lo + hi) / 2, text=f"<b>{name}</b>",
                            showarrow=False, font=dict(size=20, color=colour),
                            opacity=0.5)
-
     fig.update_layout(
         title="Kidflix rubric — audience love vs. what the film teaches "
-              "(zoom in for more labels; bubble = inflation-adjusted gross; "
+              "(scroll to zoom for more labels; bubble = inflation-adjusted gross; "
               "adult films hidden by default — click the legend to show them)",
         xaxis=dict(title="Rotten Tomatoes — audience (Popcornmeter %)",
                    range=[20, 103]),
@@ -185,12 +188,65 @@ def main() -> None:
         legend=dict(x=0.01, y=0.01, bgcolor="rgba(255,255,255,0.7)"),
         hovermode="closest",
     )
+    return fig
+
+
+def rank_view(kids: pd.DataFrame, adult: pd.DataFrame) -> go.Figure:
+    """Audience rank (x) vs rubric rank (y). Ranks are computed across the
+    combined pool so toggling adult films on shows their true positions in
+    the same coordinate system. Rank 1 at top-right; diagonal = agreement."""
+    both = pd.concat([kids, adult], ignore_index=True)
+    n = len(both)
+    both["x_rank"] = both["rt_audience"].rank(ascending=False, method="first").astype(int)
+    both["y_rank"] = both["total"].rank(ascending=False, method="first").astype(int)
+    k = both[both["segment"] == "kids"]
+    a = both[both["segment"] == "adult"]
+
+    fig = go.Figure([
+        make_trace(k, k["x_rank"], k["y_rank"],
+                   f"Kids films (n={len(k)})", "#7cb342", "circle"),
+        make_trace(a, a["x_rank"], a["y_rank"],
+                   f"Adult films (n={len(a)}) — click to show", "#5c6bc0",
+                   "square", visible="legendonly"),
+    ])
+    # diagonal: audience and rubric agree
+    fig.add_shape(type="line", x0=0, y0=0, x1=n + 1, y1=n + 1,
+                  line=dict(color="gray", width=1, dash="dot"), layer="below")
+    fig.update_layout(
+        title=f"Kidflix rubric — audience rank vs. rubric rank "
+              f"(1 = best; ranks computed across all {n} films; scroll to zoom "
+              f"for more labels; dotted line = audience and rubric agree)",
+        xaxis=dict(title=f"Audience rank (1 = most loved of {n})",
+                   range=[n + 2, -1]),        # reversed: rank 1 at the right
+        yaxis=dict(title=f"Rubric rank (1 = best values of {n})",
+                   range=[n + 2, -1]),        # reversed: rank 1 at the top
+        template="plotly_white",
+        height=820,
+        legend=dict(x=0.01, y=0.01, bgcolor="rgba(255,255,255,0.7)"),
+        hovermode="closest",
+    )
+    return fig
+
+
+# view builder, output filename, plotly.min.js src relative to the page's
+# final address on the site (see build_site.py for where each page lands)
+VIEWS = [
+    (scores_view, "interactive.html",      "plotly.min.js"),
+    (rank_view,   "interactive_rank.html", "../kids-movies/plotly.min.js"),
+]
+
+
+def main() -> None:
+    kids = load(ROOT / "data" / "movies.csv", "kids")
+    adult = load(ROOT / "data" / "movies_adult.csv", "adult")
 
     OUT.mkdir(exist_ok=True)
-    out = OUT / "interactive.html"
-    fig.write_html(out, include_plotlyjs="plotly.min.js", post_script=POST_SCRIPT,
-                   full_html=True)
-    print(f"Wrote {out}")
+    for build, name, pjs in VIEWS:
+        fig = build(kids, adult)
+        out = OUT / name
+        fig.write_html(out, include_plotlyjs=pjs, post_script=POST_SCRIPT,
+                       full_html=True, config={"scrollZoom": True})
+        print(f"Wrote {out}")
 
 
 if __name__ == "__main__":
