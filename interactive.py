@@ -67,13 +67,26 @@ def hover_text(row: pd.Series) -> str:
     return "<br>".join(wrapped)
 
 
-def make_trace(df: pd.DataFrame, xs, ys, name: str, colour: str, symbol: str,
-               visible=True, initial_labels: int = 14) -> go.Scatter:
-    """One segment as a trace. xs/ys are the view's coordinates; label
-    priority is always the rubric total (customdata[1])."""
+BASE_LABELS = 45   # labels at full zoom-out; the budget grows as you zoom in
+
+
+def tier_colour_for(total: float) -> str:
+    for _, lo, hi, colour in TIERS:
+        if lo <= total < hi or (hi == 104 and total >= lo):
+            return colour
+    return "#b71c1c"
+
+
+def make_trace(df: pd.DataFrame, xs, ys, name: str, colour, symbol: str,
+               visible=True, initial_labels: int = BASE_LABELS) -> go.Scatter:
+    """One segment as a trace. xs/ys are the view's coordinates. Label
+    priority (customdata[1]) is inflation-adjusted gross: the biggest-spend
+    films get named first when the budget forces a reduction. `colour` may be
+    a single colour or a per-point list (tier colouring on the rank view)."""
+    prio = df["revenue_adj_musd"]
     if visible is True and initial_labels:
-        cutoff = df["total"].nlargest(initial_labels).min()
-        text = [t if tot >= cutoff else "" for t, tot in zip(df["title"], df["total"])]
+        cutoff = prio.nlargest(min(initial_labels, len(df))).min()
+        text = [t if p >= cutoff else "" for t, p in zip(df["title"], prio)]
     else:
         text = [""] * len(df)
     return go.Scatter(
@@ -89,10 +102,11 @@ def make_trace(df: pd.DataFrame, xs, ys, name: str, colour: str, symbol: str,
         hoverlabel=dict(align="left", font_size=11),
         marker=dict(
             size=((df["revenue_adj_musd"].clip(lower=20) ** 0.5) / 1.6 + 7).tolist(),
-            color=colour, symbol=symbol,
+            color=list(colour) if not isinstance(colour, str) else colour,
+            symbol=symbol,
             line=dict(width=1, color="black"), opacity=0.85,
         ),
-        customdata=[[t, int(p)] for t, p in zip(df["title"], df["total"])],
+        customdata=[[t, float(p)] for t, p in zip(df["title"], prio)],
     )
 
 
@@ -112,14 +126,15 @@ function updateLabels() {
     var areaFrac = Math.max(1e-6, Math.abs(
         ((xr[1]-xr[0]) * (yr[1]-yr[0])) /
         ((FULL.x[1]-FULL.x[0]) * (FULL.y[1]-FULL.y[0]))));
-    // label budget: ~14 fully zoomed out, growing as the viewport shrinks
-    var budget = Math.round(14 / areaFrac);
+    // label budget: ~45 fully zoomed out, growing as the viewport shrinks
+    var budget = Math.round(45 / areaFrac);
 
     // gather visible points across traces with their priority
     var vis = [];
     var src = gd._fullData || gd.data;
     src.forEach(function(ftr, ti) {
         var tr = gd.data[ti];
+        if (!tr.customdata) return;   // legend-key traces carry no points
         if (ftr.visible === 'legendonly' || ftr.visible === false) return;
         var txs = Array.from(ftr.x), tys = Array.from(ftr.y);
         for (var i = 0; i < txs.length; i++) {
@@ -137,6 +152,7 @@ function updateLabels() {
 
     var newText = (gd._fullData || gd.data).map(function(ftr, ti) {
         var tr = gd.data[ti];
+        if (!tr.customdata) return [];
         var arr = [];
         for (var i = 0; i < ftr.x.length; i++) {
             arr.push((chosen[ti] && chosen[ti][i]) ? String(tr.customdata[i][0]) : '');
@@ -204,14 +220,43 @@ def rank_view(kids: pd.DataFrame, adult: pd.DataFrame) -> go.Figure:
 
     fig = go.Figure([
         make_trace(k, k["x_rank"], k["y_rank"],
-                   f"Kids films (n={len(k)})", "#7cb342", "circle"),
+                   f"Kids films (n={len(k)}, colour = tier)",
+                   [tier_colour_for(t) for t in k["total"]], "circle"),
         make_trace(a, a["x_rank"], a["y_rank"],
-                   f"Adult films (n={len(a)}) — click to show", "#5c6bc0",
+                   f"Adult films (n={len(a)}) — click to show",
+                   [tier_colour_for(t) for t in a["total"]],
                    "square", visible="legendonly"),
     ])
+    # tier colour key (display-only legend entries, no data points)
+    for tname, lo, hi, colour in TIERS:
+        fig.add_trace(go.Scatter(
+            x=[None], y=[None], mode="markers", hoverinfo="skip",
+            marker=dict(size=10, color=colour, symbol="circle",
+                        line=dict(width=1, color="black")),
+            name=f"{tname} tier ({lo}-{hi if hi < 104 else 100})",
+            showlegend=True))
     # diagonal: audience and rubric agree
     fig.add_shape(type="line", x0=0, y0=0, x1=n + 1, y1=n + 1,
                   line=dict(color="gray", width=1, dash="dot"), layer="below")
+    # quadrant crosshairs at the rank midpoint + the four quadrant readings
+    mid = (n + 1) / 2
+    fig.add_shape(type="line", x0=mid, y0=-1, x1=mid, y1=n + 2,
+                  line=dict(color="gray", width=1, dash="dash"), opacity=0.6,
+                  layer="below")
+    fig.add_shape(type="line", x0=-1, y0=mid, x1=n + 2, y1=mid,
+                  line=dict(color="gray", width=1, dash="dash"), opacity=0.6,
+                  layer="below")
+    lo_q, hi_q = mid / 2, mid + (n - mid) / 2
+    for x, y, txt, colour in [
+        (lo_q, lo_q, "<b>SAFE BETS</b><br>top half on both", "#2e7d32"),
+        (hi_q, lo_q, "<b>HIDDEN GEMS</b><br>rubric loves, audience shrugs", "#1565c0"),
+        (lo_q, hi_q, "<b>BELOVED BUT CORROSIVE</b><br>audience loves, rubric objects", "#b71c1c"),
+        (hi_q, hi_q, "<b>SKIP</b><br>bottom half on both", "#616161"),
+    ]:
+        fig.add_annotation(x=x, y=y, text=txt, showarrow=False,
+                           font=dict(size=13, color=colour), opacity=0.65,
+                           bgcolor="rgba(255,255,255,0.75)",
+                           bordercolor="gray", borderwidth=1)
     fig.update_layout(
         title=f"Kidflix rubric — audience rank vs. rubric rank "
               f"(1 = best; ranks computed across all {n} films; scroll to zoom "
