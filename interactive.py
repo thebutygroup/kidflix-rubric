@@ -60,24 +60,29 @@ def hover_text(row: pd.Series) -> str:
 
 
 def make_trace(df: pd.DataFrame, name: str, colour: str, symbol: str,
-               visible=True) -> go.Scatter:
+               visible=True, initial_labels: int = 14) -> go.Scatter:
+    if visible is True and initial_labels:
+        cutoff = df["total"].nlargest(initial_labels).min()
+        text = [t if tot >= cutoff else "" for t, tot in zip(df["title"], df["total"])]
+    else:
+        text = [""] * len(df)
     return go.Scatter(
         visible=visible,
-        x=df["rt_audience"], y=df["total"],
+        x=df["rt_audience"].tolist(), y=[int(t) for t in df["total"]],
         mode="markers+text",
         name=name,
-        text=[""] * len(df),                      # filled dynamically by JS
+        text=text,                                # top-N at load; JS refines on zoom
         textposition="top center",
         textfont=dict(size=11),
         hovertext=[hover_text(r) for _, r in df.iterrows()],
         hoverinfo="text",
         hoverlabel=dict(align="left", font_size=11),
         marker=dict(
-            size=(df["revenue_adj_musd"].clip(lower=20) ** 0.5) / 1.6 + 7,
+            size=((df["revenue_adj_musd"].clip(lower=20) ** 0.5) / 1.6 + 7).tolist(),
             color=colour, symbol=symbol,
             line=dict(width=1, color="black"), opacity=0.85,
         ),
-        customdata=list(zip(df["title"], df["total"])),  # [label, priority]
+        customdata=[[t, int(p)] for t, p in zip(df["title"], df["total"])],
     )
 
 
@@ -102,9 +107,11 @@ function updateLabels() {
 
     // gather visible points across traces with their priority
     var vis = [];
-    gd.data.forEach(function(tr, ti) {
-        if (tr.visible === 'legendonly') return;
-        var txs = Array.from(tr.x), tys = Array.from(tr.y);
+    var src = gd._fullData || gd.data;
+    src.forEach(function(ftr, ti) {
+        var tr = gd.data[ti];
+        if (ftr.visible === 'legendonly' || ftr.visible === false) return;
+        var txs = Array.from(ftr.x), tys = Array.from(ftr.y);
         for (var i = 0; i < txs.length; i++) {
             if (txs[i] >= Math.min(xr[0],xr[1]) && txs[i] <= Math.max(xr[0],xr[1]) &&
                 tys[i] >= Math.min(yr[0],yr[1]) && tys[i] <= Math.max(yr[0],yr[1])) {
@@ -118,9 +125,10 @@ function updateLabels() {
         (chosen[p.ti] = chosen[p.ti] || {})[p.i] = true;
     });
 
-    var newText = gd.data.map(function(tr, ti) {
+    var newText = (gd._fullData || gd.data).map(function(ftr, ti) {
+        var tr = gd.data[ti];
         var arr = [];
-        for (var i = 0; i < tr.x.length; i++) {
+        for (var i = 0; i < ftr.x.length; i++) {
             arr.push((chosen[ti] && chosen[ti][i]) ? String(tr.customdata[i][0]) : '');
         }
         return arr;
