@@ -118,19 +118,28 @@ function fullRanges() {
     return {x: fl.xaxis.range.slice(), y: fl.yaxis.range.slice()};
 }
 var FULL = null;
+var STICKY = {};
+var PREV_AREA = null;
 
 function updateLabels() {
     if (!FULL) FULL = fullRanges();
     var fl = gd._fullLayout;
     var xr = fl.xaxis.range, yr = fl.yaxis.range;
-    var areaFrac = Math.max(1e-6, Math.abs(
-        ((xr[1]-xr[0]) * (yr[1]-yr[0])) /
-        ((FULL.x[1]-FULL.x[0]) * (FULL.y[1]-FULL.y[0]))));
+    var area = Math.abs((xr[1]-xr[0]) * (yr[1]-yr[0]));
+    var fullArea = Math.abs((FULL.x[1]-FULL.x[0]) * (FULL.y[1]-FULL.y[0]));
+    var areaFrac = Math.max(1e-6, area / fullArea);
     // label budget: ~45 fully zoomed out, growing as the viewport shrinks
     var budget = Math.round(45 / areaFrac);
 
+    // Sticky labels: a label placed at a wider zoom is a landmark. It is
+    // only removed when (a) its point leaves the viewport, or (b) the user
+    // zooms OUT (viewport area grows), which re-selects from scratch.
+    var zoomedOut = (PREV_AREA !== null && area > PREV_AREA * 1.001);
+    PREV_AREA = area;
+    if (zoomedOut) STICKY = {};
+
     // gather visible points across traces with their priority
-    var vis = [];
+    var vis = [], visSet = {};
     var src = gd._fullData || gd.data;
     src.forEach(function(ftr, ti) {
         var tr = gd.data[ti];
@@ -141,21 +150,31 @@ function updateLabels() {
             if (txs[i] >= Math.min(xr[0],xr[1]) && txs[i] <= Math.max(xr[0],xr[1]) &&
                 tys[i] >= Math.min(yr[0],yr[1]) && tys[i] <= Math.max(yr[0],yr[1])) {
                 vis.push({ti: ti, i: i, prio: tr.customdata[i][1]});
+                visSet[ti + ':' + i] = true;
             }
         }
     });
+
+    // keep every sticky label whose point is still visible (never trimmed
+    // on zoom-in, even past the budget)
+    var chosen = {}, count = 0;
+    for (var key in STICKY) {
+        if (visSet[key]) { chosen[key] = true; count++; }
+    }
+    // fill the remaining budget with the highest-priority visible points
     vis.sort(function(a, b) { return b.prio - a.prio; });
-    var chosen = {};
-    vis.slice(0, budget).forEach(function(p) {
-        (chosen[p.ti] = chosen[p.ti] || {})[p.i] = true;
-    });
+    for (var j = 0; j < vis.length && count < budget; j++) {
+        var kk = vis[j].ti + ':' + vis[j].i;
+        if (!chosen[kk]) { chosen[kk] = true; count++; }
+    }
+    STICKY = chosen;
 
     var newText = (gd._fullData || gd.data).map(function(ftr, ti) {
         var tr = gd.data[ti];
         if (!tr.customdata) return [];
         var arr = [];
         for (var i = 0; i < ftr.x.length; i++) {
-            arr.push((chosen[ti] && chosen[ti][i]) ? String(tr.customdata[i][0]) : '');
+            arr.push(chosen[ti + ':' + i] ? String(tr.customdata[i][0]) : '');
         }
         return arr;
     });
@@ -201,7 +220,7 @@ def scores_view(kids: pd.DataFrame, adult: pd.DataFrame) -> go.Figure:
         yaxis=dict(title="Rubric score (/100)", range=[0, 104]),
         template="plotly_white",
         height=820,
-        legend=dict(x=0.01, y=0.01, bgcolor="rgba(255,255,255,0.7)"),
+        legend=dict(x=1.01, y=1, xanchor="left", yanchor="top"),
         hovermode="closest",
     )
     return fig
@@ -217,6 +236,7 @@ def rank_view(kids: pd.DataFrame, adult: pd.DataFrame) -> go.Figure:
     both["y_rank"] = both["total"].rank(ascending=False, method="first").astype(int)
     k = both[both["segment"] == "kids"]
     a = both[both["segment"] == "adult"]
+    rho = both["x_rank"].corr(both["y_rank"])   # pearson of ranks = spearman
 
     fig = go.Figure([
         make_trace(k, k["x_rank"], k["y_rank"],
@@ -235,9 +255,13 @@ def rank_view(kids: pd.DataFrame, adult: pd.DataFrame) -> go.Figure:
                         line=dict(width=1, color="black")),
             name=f"{tname} tier ({lo}-{hi if hi < 104 else 100})",
             showlegend=True))
-    # diagonal: audience and rubric agree
+    # diagonal: audience and rubric agree, with the +/-25% disagreement band
+    fig.add_shape(type="path",
+                  path=(f"M 0,{-n * 0.25} L {n},{n * 0.75} "
+                        f"L {n},{n * 1.25} L 0,{n * 0.25} Z"),
+                  fillcolor="gray", opacity=0.06, line_width=0, layer="below")
     fig.add_shape(type="line", x0=0, y0=0, x1=n + 1, y1=n + 1,
-                  line=dict(color="gray", width=1, dash="dot"), layer="below")
+                  line=dict(color="gray", width=1.5), opacity=0.6, layer="below")
     # quadrant crosshairs at the rank midpoint + the four quadrant readings
     mid = (n + 1) / 2
     fig.add_shape(type="line", x0=mid, y0=-1, x1=mid, y1=n + 2,
@@ -258,16 +282,16 @@ def rank_view(kids: pd.DataFrame, adult: pd.DataFrame) -> go.Figure:
                            bgcolor="rgba(255,255,255,0.75)",
                            bordercolor="gray", borderwidth=1)
     fig.update_layout(
-        title=f"Kidflix rubric — audience rank vs. rubric rank "
-              f"(1 = best; ranks computed across all {n} films; scroll to zoom "
-              f"for more labels; dotted line = audience and rubric agree)",
+        title=f"Rank vs rank: audience love vs rubric values "
+              f"(Spearman \u03c1 = {rho:.2f}) — 1 = best, ranks across all "
+              f"{n} films; scroll to zoom for more labels; diagonal = agreement",
         xaxis=dict(title=f"Audience rank (1 = most loved of {n})",
                    range=[n + 2, -1]),        # reversed: rank 1 at the right
         yaxis=dict(title=f"Rubric rank (1 = best values of {n})",
                    range=[n + 2, -1]),        # reversed: rank 1 at the top
         template="plotly_white",
         height=820,
-        legend=dict(x=0.01, y=0.01, bgcolor="rgba(255,255,255,0.7)"),
+        legend=dict(x=1.01, y=1, xanchor="left", yanchor="top"),
         hovermode="closest",
     )
     return fig
