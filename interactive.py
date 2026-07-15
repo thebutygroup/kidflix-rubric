@@ -106,11 +106,12 @@ def make_trace(df: pd.DataFrame, xs, ys, name: str, colour, symbol: str,
             symbol=symbol,
             line=dict(width=1, color="black"), opacity=0.85,
         ),
-        customdata=[[t, float(p)] for t, p in zip(df["title"], prio)],
+        customdata=[[t, float(p), int(tot)]
+                    for t, p, tot in zip(df["title"], prio, df["total"])],
     )
 
 
-POST_SCRIPT = """
+POST_SCRIPT = r"""
 var gd = document.getElementById('{plot_id}');
 
 function fullRanges() {
@@ -158,8 +159,11 @@ function updateLabels() {
     // keep every sticky label whose point is still visible (never trimmed
     // on zoom-in, even past the budget)
     var chosen = {}, count = 0;
+    for (var fkey in FORCED) {
+        if (visSet[fkey]) { chosen[fkey] = true; count++; }
+    }
     for (var key in STICKY) {
-        if (visSet[key]) { chosen[key] = true; count++; }
+        if (visSet[key] && !chosen[key]) { chosen[key] = true; count++; }
     }
     // fill the remaining budget with the highest-priority visible points
     vis.sort(function(a, b) { return b.prio - a.prio; });
@@ -180,6 +184,107 @@ function updateLabels() {
     });
     Plotly.restyle(gd, {text: newText});
 }
+
+// ---- film search ----
+var FORCED = {};   // labels the user searched for; always shown while visible
+var sbox = document.createElement('div');
+sbox.style.cssText = 'position:fixed;top:10px;left:10px;z-index:1000;' +
+    'background:#fff;padding:8px;border:1px solid #bbb;border-radius:6px;' +
+    'box-shadow:0 1px 4px rgba(0,0,0,0.2);font-family:sans-serif';
+sbox.innerHTML = '<input id="film-search" list="film-titles" ' +
+    'placeholder="Find a film..." style="width:230px;padding:4px">' +
+    '<datalist id="film-titles"></datalist>' +
+    '<div id="film-result" style="font-size:12px;margin-top:4px;color:#333"></div>';
+document.body.appendChild(sbox);
+
+var TITLES = [];
+gd.data.forEach(function(tr, ti) {
+    if (!tr.customdata) return;
+    tr.customdata.forEach(function(cd, i) {
+        TITLES.push({t: String(cd[0]), ti: ti, i: i, score: cd[2]});
+    });
+});
+TITLES.sort(function(a, b) { return a.t.localeCompare(b.t); });
+var dl = document.getElementById('film-titles');
+TITLES.forEach(function(o) {
+    var opt = document.createElement('option');
+    opt.value = o.t;
+    dl.appendChild(opt);
+});
+
+function lev(a, b) {
+    var m = a.length, n = b.length;
+    var row = [];
+    for (var j = 0; j <= n; j++) row.push(j);
+    for (var i = 1; i <= m; i++) {
+        var prev = row[0]; row[0] = i;
+        for (var k = 1; k <= n; k++) {
+            var tmp = row[k];
+            row[k] = Math.min(row[k] + 1, row[k - 1] + 1,
+                              prev + (a[i - 1] === b[k - 1] ? 0 : 1));
+            prev = tmp;
+        }
+    }
+    return row[n];
+}
+
+function fuzzyHit(q) {
+    // closest word-span of any title, tolerating ~1 typo per 3 characters
+    var best = null, bestD = Math.max(2, Math.ceil(q.length * 0.34));
+    TITLES.forEach(function(o) {
+        var words = o.t.toLowerCase().split(/\s+/);
+        for (var i = 0; i < words.length; i++) {
+            var span = '';
+            for (var j = i; j < words.length; j++) {
+                span = span ? span + ' ' + words[j] : words[j];
+                var d = lev(q, span);
+                if (d < bestD) { bestD = d; best = o; }
+            }
+        }
+    });
+    return best;
+}
+
+function doSearch(q) {
+    q = q.trim().toLowerCase();
+    var res = document.getElementById('film-result');
+    if (!q) { res.textContent = ''; return; }
+    var fuzzy = false;
+    var hit = TITLES.find(function(o) { return o.t.toLowerCase() === q; }) ||
+              TITLES.find(function(o) { return o.t.toLowerCase().indexOf(q) === 0; }) ||
+              TITLES.find(function(o) { return o.t.toLowerCase().indexOf(q) >= 0; });
+    if (!hit) { hit = fuzzyHit(q); fuzzy = !!hit; }
+    if (!hit) {
+        res.textContent = 'Not on this chart: "' + q + '"';
+        return;
+    }
+    res.textContent = (fuzzy ? 'Closest match: ' : '') +
+        hit.t + ' \u2014 rubric ' + hit.score + '/100';
+    var key = hit.ti + ':' + hit.i;
+    FORCED = {};
+    FORCED[key] = true;
+    var ftr = (gd._fullData || gd.data)[hit.ti];
+    var pre = (ftr.visible === 'legendonly')
+        ? Plotly.restyle(gd, {visible: true}, [hit.ti])
+        : Promise.resolve();
+    pre.then(function() {
+        var fd = (gd._fullData || gd.data)[hit.ti];
+        var fx = Array.from(fd.x)[hit.i], fy = Array.from(fd.y)[hit.i];
+        if (!FULL) FULL = fullRanges();
+        var dx = (FULL.x[1] - FULL.x[0]) * 0.10;
+        var dy = (FULL.y[1] - FULL.y[0]) * 0.10;
+        return Plotly.relayout(gd, {'xaxis.range': [fx - dx, fx + dx],
+                                    'yaxis.range': [fy - dy, fy + dy]});
+    }).then(function() {
+        Plotly.Fx.hover(gd, [{curveNumber: hit.ti, pointNumber: hit.i}]);
+    });
+}
+document.getElementById('film-search').addEventListener('change', function(e) {
+    doSearch(e.target.value);
+});
+document.getElementById('film-search').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doSearch(e.target.value);
+});
 
 gd.on('plotly_relayout', function(e) {
     if (e['xaxis.autorange'] || e['yaxis.autorange']) FULL = fullRanges();
