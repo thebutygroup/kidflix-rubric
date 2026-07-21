@@ -114,6 +114,16 @@ def make_trace(df: pd.DataFrame, xs, ys, name: str, colour, symbol: str,
 POST_SCRIPT = r"""
 var gd = document.getElementById('{plot_id}');
 
+function clampRange(r, b) {
+    // shift a candidate range back inside the axis bounds (orientation-safe)
+    if (!b) return r;
+    var lo = Math.min(r[0], r[1]), hi = Math.max(r[0], r[1]), shift = 0;
+    if (hi - lo >= b[1] - b[0]) return (r[0] < r[1]) ? [b[0], b[1]] : [b[1], b[0]];
+    if (lo < b[0]) shift = b[0] - lo;
+    else if (hi > b[1]) shift = b[1] - hi;
+    return [r[0] + shift, r[1] + shift];
+}
+
 function fullRanges() {
     var fl = gd._fullLayout;
     return {x: fl.xaxis.range.slice(), y: fl.yaxis.range.slice()};
@@ -274,8 +284,10 @@ function doSearch(q) {
         if (!FULL) FULL = fullRanges();
         var dx = (FULL.x[1] - FULL.x[0]) * 0.10;
         var dy = (FULL.y[1] - FULL.y[0]) * 0.10;
-        return Plotly.relayout(gd, {'xaxis.range': [fx - dx, fx + dx],
-                                    'yaxis.range': [fy - dy, fy + dy]});
+        var meta = gd.layout.meta || {};
+        return Plotly.relayout(gd, {
+            'xaxis.range': clampRange([fx - dx, fx + dx], meta.xbounds),
+            'yaxis.range': clampRange([fy - dy, fy + dy], meta.ybounds)});
     }).then(function() {
         Plotly.Fx.hover(gd, [{curveNumber: hit.ti, pointNumber: hit.i}]);
     });
@@ -322,8 +334,10 @@ gd.on('plotly_relayout', function(e) {
             var fl = gd._fullLayout;
             var dx = (lastE.clientX - sx) * (xr0[1] - xr0[0]) / fl.xaxis._length;
             var dy = (lastE.clientY - sy) * (yr0[1] - yr0[0]) / fl.yaxis._length;
-            Plotly.relayout(gd, {'xaxis.range': [xr0[0] - dx, xr0[1] - dx],
-                                 'yaxis.range': [yr0[0] + dy, yr0[1] + dy]});
+            var meta = gd.layout.meta || {};
+            Plotly.relayout(gd, {
+                'xaxis.range': clampRange([xr0[0] - dx, xr0[1] - dx], meta.xbounds),
+                'yaxis.range': clampRange([yr0[0] + dy, yr0[1] + dy], meta.ybounds)});
         });
     });
     window.addEventListener('mouseup', function(e) {
@@ -364,8 +378,11 @@ def scores_view(kids: pd.DataFrame, adult: pd.DataFrame) -> go.Figure:
               "(scroll to zoom for more labels; bubble = inflation-adjusted gross; "
               "adult films hidden by default — click the legend to show them)",
         xaxis=dict(title="Rotten Tomatoes — audience (Popcornmeter %)",
-                   range=[20, 103]),
-        yaxis=dict(title="Rubric score (/100)", range=[0, 104]),
+                   range=[20, 103], minallowed=20, maxallowed=103,
+                   showline=True, mirror=True, linecolor="black", linewidth=1,),
+        yaxis=dict(title="Rubric score (/100)", range=[0, 104],
+                   minallowed=0, maxallowed=104, showline=True, mirror=True, linecolor="black", linewidth=1,),
+        meta=dict(xbounds=[20, 103], ybounds=[0, 104]),
         template="plotly_white",
         height=820,
         legend=dict(x=1.01, y=1, xanchor="left", yanchor="top"),
@@ -434,9 +451,12 @@ def rank_view(kids: pd.DataFrame, adult: pd.DataFrame) -> go.Figure:
               f"(Spearman \u03c1 = {rho:.2f}) — 1 = best, ranks across all "
               f"{n} films; scroll to zoom for more labels; diagonal = agreement",
         xaxis=dict(title=f"Audience rank (1 = most loved of {n})",
-                   range=[n + 2, -1]),        # reversed: rank 1 at the right
+                   range=[n + 2, -1],         # reversed: rank 1 at the right
+                   minallowed=-1, maxallowed=n + 2, showline=True, mirror=True, linecolor="black", linewidth=1,),
         yaxis=dict(title=f"Rubric rank (1 = best values of {n})",
-                   range=[n + 2, -1]),        # reversed: rank 1 at the top
+                   range=[n + 2, -1],         # reversed: rank 1 at the top
+                   minallowed=-1, maxallowed=n + 2, showline=True, mirror=True, linecolor="black", linewidth=1,),
+        meta=dict(xbounds=[-1, n + 2], ybounds=[-1, n + 2]),
         template="plotly_white",
         height=820,
         legend=dict(x=1.01, y=1, xanchor="left", yanchor="top"),
