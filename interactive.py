@@ -299,15 +299,19 @@ gd.on('plotly_relayout', function(e) {
     css.textContent = 'body.wheel-pan, body.wheel-pan * { cursor: grabbing !important; }';
     document.head.appendChild(css);
     var sx = 0, sy = 0, xr0 = null, yr0 = null, raf = null, lastE = null;
+    // capture phase: swallow the event before Plotly's drag layer sees it,
+    // otherwise Plotly starts its zoom-box selection on the same mousedown
     gd.addEventListener('mousedown', function(e) {
         if (e.button !== 1) return;      // middle button only
         e.preventDefault();              // suppress browser autoscroll
+        e.stopPropagation();
+        e.stopImmediatePropagation();
         var fl = gd._fullLayout;
         PANNING = true;
         sx = e.clientX; sy = e.clientY;
         xr0 = fl.xaxis.range.slice(); yr0 = fl.yaxis.range.slice();
         document.body.classList.add('wheel-pan');
-    });
+    }, true);
     window.addEventListener('mousemove', function(e) {
         if (!PANNING) return;
         lastE = e;
