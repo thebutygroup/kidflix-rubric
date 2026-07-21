@@ -121,6 +121,7 @@ function fullRanges() {
 var FULL = null;
 var STICKY = {};
 var PREV_AREA = null;
+var PANNING = false;
 
 function updateLabels() {
     if (!FULL) FULL = fullRanges();
@@ -287,9 +288,47 @@ document.getElementById('film-search').addEventListener('keydown', function(e) {
 });
 
 gd.on('plotly_relayout', function(e) {
+    if (PANNING) return;   // labels settle once the middle-button pan ends
     if (e['xaxis.autorange'] || e['yaxis.autorange']) FULL = fullRanges();
     updateLabels();
 });
+
+// ---- middle-button (mouse-wheel) drag to pan, Figma-style ----
+(function() {
+    var css = document.createElement('style');
+    css.textContent = 'body.wheel-pan, body.wheel-pan * { cursor: grabbing !important; }';
+    document.head.appendChild(css);
+    var sx = 0, sy = 0, xr0 = null, yr0 = null, raf = null, lastE = null;
+    gd.addEventListener('mousedown', function(e) {
+        if (e.button !== 1) return;      // middle button only
+        e.preventDefault();              // suppress browser autoscroll
+        var fl = gd._fullLayout;
+        PANNING = true;
+        sx = e.clientX; sy = e.clientY;
+        xr0 = fl.xaxis.range.slice(); yr0 = fl.yaxis.range.slice();
+        document.body.classList.add('wheel-pan');
+    });
+    window.addEventListener('mousemove', function(e) {
+        if (!PANNING) return;
+        lastE = e;
+        if (raf) return;
+        raf = requestAnimationFrame(function() {
+            raf = null;
+            if (!PANNING) return;
+            var fl = gd._fullLayout;
+            var dx = (lastE.clientX - sx) * (xr0[1] - xr0[0]) / fl.xaxis._length;
+            var dy = (lastE.clientY - sy) * (yr0[1] - yr0[0]) / fl.yaxis._length;
+            Plotly.relayout(gd, {'xaxis.range': [xr0[0] - dx, xr0[1] - dx],
+                                 'yaxis.range': [yr0[0] + dy, yr0[1] + dy]});
+        });
+    });
+    window.addEventListener('mouseup', function(e) {
+        if (!PANNING || e.button !== 1) return;
+        PANNING = false;
+        document.body.classList.remove('wheel-pan');
+        updateLabels();                  // one settle pass at the new position
+    });
+})();
 gd.on('plotly_restyle', function(e) {
     // legend toggling changes trace visibility -> recompute
     if (e && e[0] && 'visible' in e[0]) updateLabels();
