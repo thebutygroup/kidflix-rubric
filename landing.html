@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>What does the story actually teach? | The Buty Group Analysis</title>
-<meta name="description" content="182 kids' films scored against a written values rubric, cross-checked against audience scores and inflation-adjusted box office.">
+<meta name="description" content="{{N_SCORED}} kids' films scored against a written values rubric, cross-checked against audience scores and inflation-adjusted box office.">
 <style>
 :root{
   --paper:#fafaf8; --ink:#1b2430; --ink-soft:#4a5568; --line:#e3e5e0;
@@ -140,7 +140,7 @@ footer a{color:var(--ink-soft)}
 <header class="wrap">
   <div class="eyebrow">The Buty Group &middot; Analysis</div>
   <h1>What does the story actually teach?</h1>
-  <p class="dek"><strong>182 kids' films</strong>, scored against a values rubric one parent wrote down, then checked against what audiences and the inflation-adjusted box office think. Any parent could write a different rubric. That is the point: <strong>if you can articulate your criteria, the moral structure of a story can now be measured against them.</strong></p>
+  <p class="dek"><strong>{{N_SCORED}} kids' films</strong>, scored against a values rubric one parent wrote down, then checked against what audiences and the inflation-adjusted box office think. Any parent could write a different rubric. That is the point: <strong>if you can articulate your criteria, the moral structure of a story can now be measured against them.</strong></p>
 </header>
 
 <main class="wrap">
@@ -190,7 +190,7 @@ footer a{color:var(--ink-soft)}
       <h2>Scores view</h2>
       <div class="path">/kids-movies/</div>
       <p>Every film plotted: audience score against rubric total, tier bands S through F behind the points, bubble size is inflation-adjusted gross. Search any film to zoom straight to it.</p>
-      <div class="stat">75 films on the chart &middot; 107 more scored, awaiting metadata</div>
+      <div class="stat">{{N_CHART}} films on the chart &middot; {{N_PENDING}} more scored, awaiting metadata</div>
     </a>
     <a class="card" href="/ranked_chart/">
       <h2>Rank view</h2>
@@ -202,7 +202,7 @@ footer a{color:var(--ink-soft)}
         <span class="q-corr">BELOVED BUT CORROSIVE</span>
         <span>SKIP</span>
       </div>
-      <div class="stat">Spearman &rho; = 0.35 &middot; modest agreement, rich disagreement</div>
+      <div class="stat">Spearman &rho; = {{RHO}} &middot; modest agreement, rich disagreement</div>
     </a>
   </section>
 

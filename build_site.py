@@ -33,22 +33,37 @@ DOMAIN = "analysis.thebutygroup.com"
 SCORES_HTML = "interactive.html"
 RANK_HTML = "interactive_rank.html"
 
-LANDING = f"""<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The Buty Group — Analysis</title>
-<style>body{{font-family:system-ui,sans-serif;max-width:42rem;margin:4rem auto;
-padding:0 1rem;color:#222}}a{{color:#2e7d32}}</style></head>
-<body>
-<h1>Analysis</h1>
-<ul>
-  <li><a href="/kids-movies/">Kids' movies: what they actually teach</a> —
-      a values rubric vs. audience scores, interactive.</li>
-  <li><a href="/ranked_chart/">The ranked chart</a> —
-      audience rank vs. rubric rank, every film nameable.</li>
-</ul>
-</body></html>
-"""
+LANDING_TEMPLATE = ROOT / "landing.html"  # marker: landing-v2 weighted-band
+
+
+def render_landing() -> str:
+    """Fill landing.html placeholders with live stats from data/movies.csv.
+
+    Uses the same completeness criteria as interactive.load(): a film is
+    "on the chart" only if rt_audience, rt_critic and revenue_adj_musd are
+    all present. Spearman rho is computed as pearson-of-ranks so scipy is
+    not required.
+    """
+    import pandas as pd
+
+    df = pd.read_csv(ROOT / "data" / "movies.csv")
+    dims = ["wealth", "agency", "core", "music", "inclusion", "romance"]
+    df["total"] = df[dims].sum(axis=1)
+    on_chart = df.dropna(subset=["rt_audience", "rt_critic", "revenue_adj_musd"])
+    rho = on_chart["total"].rank().corr(on_chart["rt_audience"].rank())
+
+    html = LANDING_TEMPLATE.read_text(encoding="utf-8")
+    for key, val in {
+        "{{N_SCORED}}": str(len(df)),
+        "{{N_CHART}}": str(len(on_chart)),
+        "{{N_PENDING}}": str(len(df) - len(on_chart)),
+        "{{RHO}}": f"{rho:.2f}",
+    }.items():
+        html = html.replace(key, val)
+    if "{{" in html:
+        raise SystemExit("landing.html contains an unfilled {{placeholder}} — "
+                         "refusing to publish a broken landing page.")
+    return html
 
 def main() -> None:
     # 1. regenerate the interactive pages from current data
@@ -61,7 +76,7 @@ def main() -> None:
     (KM / "data").mkdir()
 
     (DOCS / "CNAME").write_text(DOMAIN + "\n", encoding="utf-8")
-    (DOCS / "index.html").write_text(LANDING, encoding="utf-8")
+    (DOCS / "index.html").write_text(render_landing(), encoding="utf-8")
 
     # interactive pages
     shutil.copy(ROOT / "output" / SCORES_HTML, KM / "index.html")
