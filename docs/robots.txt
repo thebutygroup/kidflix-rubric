@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://analysis.thebutygroup.com/sitemap.xml

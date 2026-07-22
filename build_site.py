@@ -77,6 +77,16 @@ def main() -> None:
 
     (DOCS / "CNAME").write_text(DOMAIN + "\n", encoding="utf-8")
     (DOCS / "index.html").write_text(render_landing(), encoding="utf-8")
+    (DOCS / "robots.txt").write_text(
+        "User-agent: *\nAllow: /\nSitemap: https://analysis.thebutygroup.com/sitemap.xml\n",
+        encoding="utf-8")
+    (DOCS / "sitemap.xml").write_text(
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        '  <url><loc>https://analysis.thebutygroup.com/</loc></url>\n'
+        '  <url><loc>https://analysis.thebutygroup.com/kids-movies/</loc></url>\n'
+        '  <url><loc>https://analysis.thebutygroup.com/ranked_chart/</loc></url>\n'
+        '</urlset>\n', encoding="utf-8")
 
     # interactive pages
     shutil.copy(ROOT / "output" / SCORES_HTML, KM / "index.html")
